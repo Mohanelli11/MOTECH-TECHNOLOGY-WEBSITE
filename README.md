@@ -2,11 +2,45 @@
 
 > **Engineering Intelligence. Powering Tomorrow.**
 
-Official website for **MOTECH Embedded Engineering Ltd**, an engineering and technology company focused on developing intelligent embedded systems, smart energy solutions, IoT technologies, power quality monitoring systems, data-driven engineering solutions, and innovative connectivity products.
+Official website for **MOTECH Embedded Engineering Ltd**, an engineering and technology company focused on developing intelligent embedded systems, smart energy solutions, IoT technologies, power quality monitoring systems, data analytics, and intelligent connectivity solutions.
+
+[![TypeScript](https://img.shields.io/badge/TypeScript-5.5.4-blue)](https://www.typescriptlang.org/)
+[![React](https://img.shields.io/badge/React-18.3.1-61dafb)](https://react.dev)
+[![Vite](https://img.shields.io/badge/Vite-5.2.0-646cff)](https://vitejs.dev/)
+[![Tailwind CSS](https://img.shields.io/badge/Tailwind%20CSS-3.4.17-38b2ac)](https://tailwindcss.com/)
+[![License](https://img.shields.io/badge/License-MIT-green)](LICENSE)
 
 ---
 
-## 🚀 About MOTECH
+## 🚀 Quick Start
+
+### Prerequisites
+
+- Node.js 18.x or higher
+- npm 9.x or higher
+
+### Installation & Setup
+
+```bash
+# Clone the repository
+git clone https://github.com/Mohanelli11/MOTECH-TECHNOLOGY-WEBSITE.git
+cd MOTECH-TECHNOLOGY-WEBSITE
+
+# Install dependencies
+npm install
+
+# Copy environment variables
+cp .env.example .env.local
+
+# Start development server
+npm run dev
+```
+
+The application will be available at `http://localhost:5173`
+
+---
+
+## 📋 About MOTECH
 
 MOTECH Embedded Engineering Ltd develops practical engineering technologies designed to solve real-world challenges across energy, industrial automation, safety, connectivity, and data management.
 
@@ -224,17 +258,156 @@ The MOTECH website provides:
 
 The website follows the MOTECH visual identity using a combination of:
 
-* Electric Blue
-* Technology Green
-* Dark Navy
-* Black
-* Silver
+* Electric Blue (`#00AEEF`)
+* Technology Green (`#59C414`)
+* Dark Navy (`#07111F`)
+* Black (`#000000`)
+* Silver (`#C7D2DC`)
 
 The official MOTECH logo is used throughout the website and as the **browser favicon**.
 
 ### Brand Motto
 
 > **Engineering Intelligence. Powering Tomorrow.**
+
+---
+
+## 📁 Project Structure
+
+```
+MOTECH-TECHNOLOGY-WEBSITE/
+├── public/                      # Static assets (images, fonts, favicon)
+│   └── ...
+├── src/
+│   ├── components/              # Reusable React components
+│   │   ├── Navbar.tsx
+│   │   ├── Footer.tsx
+│   │   └── ...
+│   ├── pages/                   # Page components (routes)
+│   │   ├── Home.tsx
+│   │   ├── Store.tsx
+│   │   ├── ProductDetail.tsx
+│   │   ├── auth/
+│   │   ├── portal/
+│   │   └── admin/
+│   ├── contexts/                # React Context providers
+│   │   └── AuthContext.tsx
+│   ├── data/                    # Static data & constants
+│   │   └── site.ts
+│   ├── utils/                   # Utility functions
+│   ├── hooks/                   # Custom React hooks
+│   ├── assets/                  # Images, SVGs, etc.
+│   ├── styles/                  # Global styles
+│   ├── App.tsx                  # Root component
+│   └── index.tsx                # Entry point
+├── .env.example                 # Environment variables template
+├── .env.local                   # Local environment config (not committed)
+├── .env.production              # Production environment config
+├��─ .prettierrc.json             # Code formatting config
+├── .gitattributes               # Git line ending config
+├── eslint.config.js             # ESLint rules
+├── tsconfig.json                # TypeScript config
+├── vite.config.ts               # Vite build config
+├── tailwind.config.js           # Tailwind CSS config
+├── postcss.config.js            # PostCSS config
+├── package.json                 # Dependencies & scripts
+├── CONTRIBUTING.md              # Contribution guidelines
+├── DEVELOPMENT.md               # Development guide
+├── LICENSE                      # MIT License
+└── README.md                    # This file
+```
+
+---
+
+## 📦 Tech Stack
+
+| Technology | Version | Purpose |
+|-----------|---------|---------|
+| **React** | 18.3.1 | UI library |
+| **TypeScript** | 5.5.4 | Type safety |
+| **Vite** | 5.2.0 | Build tool & dev server |
+| **Tailwind CSS** | 3.4.17 | Utility-first CSS framework |
+| **React Router** | 6.26.2 | Client-side routing |
+| **Framer Motion** | 11.5.4 | Animation library |
+| **Lucide React** | 0.522.0 | Icon library |
+| **Emotion** | 11.13.3 | CSS-in-JS styling |
+
+---
+
+## 📝 Available Scripts
+
+```bash
+# Development
+npm run dev              # Start development server
+npm run build           # Build for production
+npm run preview         # Preview production build
+
+# Code Quality
+npm run lint            # Run ESLint
+npm run format          # Format with Prettier
+npm run format:check    # Check formatting without changes
+```
+
+---
+
+## 🔧 Development Guide
+
+For detailed development instructions, environment setup, debugging tips, and troubleshooting, see [DEVELOPMENT.md](DEVELOPMENT.md).
+
+---
+
+## 🤝 Contributing
+
+We welcome contributions! Please read our [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines on:
+
+* Code style and naming conventions
+* Component structure
+* Commit message format
+* Pull request process
+* Testing requirements
+
+---
+
+## 🌍 Environment Variables
+
+### Required Variables
+
+Create a `.env.local` file based on `.env.example`:
+
+```env
+VITE_API_URL=http://localhost:3001
+VITE_ENERGY_DASHBOARD_URL=https://project-smart-energy-meter-login-page-387.magicpatterns.app/
+VITE_ENABLE_ANALYTICS=false
+VITE_ENABLE_DEBUG_MODE=false
+```
+
+See `.env.example` for all available configuration options.
+
+---
+
+## 🐛 Troubleshooting
+
+### Common Issues
+
+**Port Already in Use:**
+```bash
+# Kill process on port 5173
+lsof -ti:5173 | xargs kill -9
+```
+
+**Dependencies Not Installing:**
+```bash
+rm -rf node_modules package-lock.json
+npm install
+```
+
+**Build Fails:**
+```bash
+rm -rf dist
+npm run build
+```
+
+For more troubleshooting tips, see [DEVELOPMENT.md](DEVELOPMENT.md#troubleshooting).
 
 ---
 
@@ -252,83 +425,8 @@ For product demonstrations, technical discussions, partnerships, deployments, or
 
 ## 🔗 Important Links
 
-### Energy Management System
-
-[https://project-smart-energy-meter-login-page-387.magicpatterns.app/](https://project-smart-energy-meter-login-page-387.magicpatterns.app/)
-
----
-
-## 📁 Project Structure
-
-A typical project structure may include:
-
-```text
-motech-website/
-├── public/
-│   ├── images/
-│   ├── favicon/
-│   └── logo/
-├── src/
-│   ├── components/
-│   ├── pages/
-│   ├── assets/
-│   ├── styles/
-│   └── App.*
-├── README.md
-├── package.json
-└── ...
-```
-
-The exact structure may vary depending on the frontend framework used to implement the website.
-
----
-
-## 🚀 Getting Started
-
-Clone the repository:
-
-```bash
-git clone <repository-url>
-```
-
-Navigate into the project:
-
-```bash
-cd motech-website
-```
-
-Install dependencies:
-
-```bash
-npm install
-```
-
-Start the development server:
-
-```bash
-npm run dev
-```
-
-The website can then be opened using the local development URL provided by the framework.
-
----
-
-## 🔧 Future Development
-
-Potential future improvements include:
-
-* Customer portal
-* Online product quotation system
-* Product documentation
-* Interactive energy analytics
-* Smart meter API integration
-* ROAMfi device management portal
-* Customer authentication
-* IoT device management
-* Real-time device monitoring
-* Automated reporting
-* Online support center
-* Product ordering and inquiry system
+* [Energy Management Dashboard](https://project-smart-energy-meter-login-page-387.magicpatterns.app/)
+* [MOTECH Official Website](#)
 
 ---
 
@@ -336,9 +434,16 @@ Potential future improvements include:
 
 Copyright © 2026 **MOTECH Embedded Engineering Ltd**.
 
-All rights reserved.
+Licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
 
-Unless otherwise stated, the website design, branding, content, graphics, product concepts, and associated intellectual property are the property of MOTECH Embedded Engineering Ltd.
+All rights reserved. Unless otherwise stated, the website design, branding, content, graphics, product concepts, and associated intellectual property are the property of MOTECH Embedded Engineering Ltd.
+
+---
+
+## 📊 Repository Stats
+
+![Language Distribution](https://img.shields.io/github/languages/top/Mohanelli11/MOTECH-TECHNOLOGY-WEBSITE?style=flat-square)
+![Repo Size](https://img.shields.io/github/repo-size/Mohanelli11/MOTECH-TECHNOLOGY-WEBSITE?style=flat-square)
 
 ---
 
@@ -347,5 +452,7 @@ Unless otherwise stated, the website design, branding, content, graphics, produc
 **MOTECH Embedded Engineering Ltd**
 
 ### Engineering Intelligence. Powering Tomorrow.
+
+[Website](https://motech.local) | [Email](mailto:motechembeddedengineering@gmail.com) | [Phone](tel:+254791052537)
 
 </p>
