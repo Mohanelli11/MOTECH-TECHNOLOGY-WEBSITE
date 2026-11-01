@@ -38,7 +38,7 @@ export function App() {
       const link = document.createElement('link');
       link.rel = rel;
       link.type = 'image/png';
-      link.href = site.logo;
+      link.href = rel === 'apple-touch-icon' ? '/apple-touch-icon.png' : '/favicon-192.png';
       head.appendChild(link);
       created.push(link);
     });
