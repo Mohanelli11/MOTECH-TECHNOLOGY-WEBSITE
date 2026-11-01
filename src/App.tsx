@@ -56,8 +56,8 @@ export function App() {
         <div className="min-h-full w-full bg-navy font-sans text-white antialiased">
           <a
             href="#home"
-            className="sr-only focus:not-sr-only focus:fixed focus:left-4 focus:top-4 focus:z-[60] focus:rounded-full focus:bg-electric focus:px-4 focus:py-2 focus:text-sm focus:font-semibold focus:te[...]"
-            >
+            className="sr-only focus:not-sr-only focus:fixed focus:left-4 focus:top-4 focus:z-[60] focus:rounded-full focus:bg-electric focus:px-4 focus:py-2 focus:text-sm focus:font-semibold focus:text-navy">
+            
             Skip to content
           </a>
           <Navbar />

@@ -102,6 +102,7 @@ export function ParticleField({ className = '' }: {className?: string;}) {
     <canvas
       ref={canvasRef}
       aria-hidden="true"
-      className={`pointer-events-none absolute inset-0 ${className}`} />
-  );
+      className={`pointer-events-none absolute inset-0 ${className}`} />);
+
+
 }

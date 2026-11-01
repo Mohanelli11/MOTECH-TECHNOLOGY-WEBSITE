@@ -117,7 +117,7 @@ export const products: Product[] = [
   name: 'ROAMfi',
   tagline: 'Your home internet, securely, anywhere',
   description:
-  'ROAMfi is an intelligent network-powered device that securely extends your home or office internet connection anywhere in the world. Using your existing ISP connection and home router, ROAMfi creat[...]',
+  'ROAMfi is an intelligent network-powered device that securely extends your home or office internet connection anywhere in the world. Using your existing ISP connection and home router, ROAMfi creates a secure private network tunnel, allowing remote users to access their home internet from virtually any location.',
   image: "/400d97a6-55ff-40b7-8a7c-a269dc2d75c2.jpg",
 
   accent: 'green',
