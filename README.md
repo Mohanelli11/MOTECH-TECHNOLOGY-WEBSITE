@@ -81,7 +81,7 @@ MOTECH Smart Energy Meters provide intelligent monitoring and management of elec
 
 Users can access the online Energy Management System through:
 
-**[Open Energy Management Dashboard](https://project-smart-energy-meter-login-page-387.magicpatterns.app/)**
+**[Open Energy Management Dashboard](https://dashboard.motechenergyembedded.com/)**
 
 ---
 
@@ -376,7 +376,7 @@ Create a `.env.local` file based on `.env.example`:
 
 ```env
 VITE_API_URL=http://localhost:3001
-VITE_ENERGY_DASHBOARD_URL=https://project-smart-energy-meter-login-page-387.magicpatterns.app/
+VITE_ENERGY_DASHBOARD_URL=https://dashboard.motechenergyembedded.com/
 VITE_ENABLE_ANALYTICS=false
 VITE_ENABLE_DEBUG_MODE=false
 ```
@@ -425,7 +425,7 @@ For product demonstrations, technical discussions, partnerships, deployments, or
 
 ## 🔗 Important Links
 
-* [Energy Management Dashboard](https://project-smart-energy-meter-login-page-387.magicpatterns.app/)
+* [Energy Management Dashboard](https://dashboard.motechenergyembedded.com/)
 * [MOTECH Official Website](#)
 
 ---
