@@ -8,7 +8,7 @@ export const site = {
   dashboardPreview: "/image.png",
 
   dashboardUrl:
-  'https://project-smart-energy-meter-login-page-387.magicpatterns.app/'
+  'https://dashboard.motechenergyembedded.com/'
 };
 
 export const navLinks = [

@@ -42,7 +42,7 @@ export const products: Product[] = [
 
   dashboard: {
     label: 'Open Energy Management Dashboard',
-    url: 'https://project-smart-energy-meter-login-page-387.magicpatterns.app/'
+    url: 'https://dashboard.motechenergyembedded.com/'
   }
 },
 {
