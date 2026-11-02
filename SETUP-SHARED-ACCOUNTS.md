@@ -55,16 +55,11 @@ Do steps 5.1–5.3 straight after creating the project so nobody else can regist
 Every other account created through the website is always a normal customer.
 
 ### 6. Connect the website
-1. Supabase: **Project Settings → API**. Copy the **Project URL** and the **anon public** key.
-   (Never use the `service_role` key anywhere in the website.)
-2. GitHub, this repository: **Settings → Secrets and variables → Actions → Variables tab → New repository variable**. Add two:
+The Project URL and the **anon public** key are stored in `.env.production` (they are public by
+design; the database rules protect the data). To point the site at a different Supabase project,
+change those two lines and redeploy. Never put the `service_role` key anywhere in the website.
 
-   | Name | Value |
-   | --- | --- |
-   | `VITE_SUPABASE_URL` | the Project URL |
-   | `VITE_SUPABASE_ANON_KEY` | the anon public key |
-
-3. **Actions → Deploy to GitHub Pages → Run workflow.** Wait for the green tick.
+After merging, run **Actions → Deploy to GitHub Pages → Run workflow** and wait for the green tick.
 
 ### 7. Check it works
 1. On your phone, open the site and **Register** a test customer.
