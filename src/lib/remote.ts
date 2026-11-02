@@ -1,3 +1,4 @@
+import { requireCaptcha, consumeCaptcha } from './captcha';
 import { createClient, type SupabaseClient } from '@supabase/supabase-js';
 import type { User } from '../types/store';
 
@@ -132,14 +133,17 @@ function createSupabaseRemote(sb: SupabaseClient): RemoteAuth {
     },
 
     async signUp(input) {
+      const captchaToken = requireCaptcha();
       const { data, error } = await sb.auth.signUp({
         email: input.email.trim().toLowerCase(),
         password: input.password,
         options: {
           data: { name: input.name.trim(), company: input.company.trim(), phone: input.phone.trim() },
-          emailRedirectTo: `${window.location.origin}/login`
+          emailRedirectTo: `${window.location.origin}/login`,
+          captchaToken
         }
       });
+      consumeCaptcha();
       if (error) throw friendlyAuthError(error);
       // With "confirm email" on, an already-registered address returns a user with no identities.
       if (data.user && Array.isArray(data.user.identities) && data.user.identities.length === 0)
@@ -149,10 +153,13 @@ function createSupabaseRemote(sb: SupabaseClient): RemoteAuth {
     },
 
     async signIn(email, password) {
+      const captchaToken = requireCaptcha();
       const { data, error } = await sb.auth.signInWithPassword({
         email: email.trim().toLowerCase(),
-        password
+        password,
+        options: { captchaToken }
       });
+      consumeCaptcha();
       if (error) throw friendlyAuthError(error);
       const user = await fetchProfile(data.user.id);
       if (user.disabled) {
@@ -167,9 +174,12 @@ function createSupabaseRemote(sb: SupabaseClient): RemoteAuth {
     },
 
     async requestPasswordReset(email) {
+      const captchaToken = requireCaptcha();
       const { error } = await sb.auth.resetPasswordForEmail(email.trim().toLowerCase(), {
-        redirectTo: `${window.location.origin}/reset-password`
+        redirectTo: `${window.location.origin}/reset-password`,
+        captchaToken
       });
+      consumeCaptcha();
       // Rate limits are worth surfacing; "unknown email" never errors, so nothing is disclosed.
       if (error && /rate|too many/i.test(error.message)) throw friendlyAuthError(error);
     },
@@ -181,7 +191,13 @@ function createSupabaseRemote(sb: SupabaseClient): RemoteAuth {
     },
 
     async verifyPassword(email, password) {
-      const { error } = await sb.auth.signInWithPassword({ email: email.trim().toLowerCase(), password });
+      const captchaToken = requireCaptcha();
+      const { error } = await sb.auth.signInWithPassword({
+        email: email.trim().toLowerCase(),
+        password,
+        options: { captchaToken }
+      });
+      consumeCaptcha();
       return !error;
     },
 

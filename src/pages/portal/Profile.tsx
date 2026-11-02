@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { CheckCircle2Icon, Loader2Icon, ShieldAlertIcon } from 'lucide-react';
 import { api } from '../../lib/accessControl';
+import { Turnstile } from '../../components/Turnstile';
 import { useAuth } from '../../contexts/AuthContext';
 
 const field =
@@ -141,6 +142,7 @@ export function Profile() {
               className={field} />
             
           </div>
+          <Turnstile />
         </div>
         <button
           type="submit"

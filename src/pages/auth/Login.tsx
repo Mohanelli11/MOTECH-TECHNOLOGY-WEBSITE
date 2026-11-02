@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { LockIcon, Loader2Icon, MailIcon, ShieldAlertIcon } from 'lucide-react';
+import { Turnstile } from '../../components/Turnstile';
 import { AuthShell } from './AuthShell';
 import { useAuth } from '../../contexts/AuthContext';
 
@@ -92,6 +93,8 @@ export function Login() {
             
           </div>
         </div>
+
+        <Turnstile />
 
         {error &&
         <p className="flex items-start gap-2 rounded-xl border border-red-400/25 bg-red-400/10 p-3 text-[12.5px] text-red-300">

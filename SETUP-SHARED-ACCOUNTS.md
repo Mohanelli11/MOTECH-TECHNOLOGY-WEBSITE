@@ -79,3 +79,11 @@ After merging, run **Actions → Deploy to GitHub Pages → Run workflow** and w
 Accounts, passwords and sign-in are now shared. **Orders, payment proofs, licences and the product
 catalogue edited in the admin area are still kept in each browser** and are not shared between devices
 yet. The next step is to move those into the same database.
+
+## Optional: CAPTCHA (Cloudflare Turnstile)
+
+1. Cloudflare dashboard → Turnstile → Add widget. Domain: `motechenergyembedded.com`. Mode: Managed. Copy the **Site key** and **Secret key**.
+2. Supabase → Authentication → Attack Protection → enable CAPTCHA, provider Turnstile, paste the **Secret key**, Save.
+3. Put the Site key in `.env.production` as `VITE_TURNSTILE_SITE_KEY=...`, merge, and redeploy.
+
+Leave `VITE_TURNSTILE_SITE_KEY` empty if Supabase CAPTCHA is off; the widget is then hidden.
