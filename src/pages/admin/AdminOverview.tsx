@@ -1,4 +1,4 @@
-import React, { useMemo } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import {
   BadgeCheckIcon,
@@ -13,13 +13,26 @@ import { OrderStatusBadge } from '../../components/store/StatusBadge';
 
 export function AdminOverview() {
   const stats = useMemo(() => api.adminStats(), []);
+  const [customerCount, setCustomerCount] = useState<number>(stats.customers);
+  useEffect(() => {
+    let cancelled = false;
+    api.
+    adminCustomerCount().
+    then((n) => {
+      if (!cancelled) setCustomerCount(n);
+    }).
+    catch(() => undefined);
+    return () => {
+      cancelled = true;
+    };
+  }, []);
   const recent = useMemo(() => api.adminOrders().slice(0, 6), []);
 
   const cards = [
   { label: 'Awaiting verification', value: String(stats.pending), icon: ClockIcon, accent: 'text-amber-300' },
   { label: 'Verified revenue', value: formatKes(stats.revenue), icon: WalletIcon, accent: 'text-tech' },
   { label: 'Active licences', value: String(stats.activeLicenses), icon: BadgeCheckIcon, accent: 'text-electric' },
-  { label: 'Customers', value: String(stats.customers), icon: UsersIcon, accent: 'text-silver' },
+  { label: 'Customers', value: String(customerCount), icon: UsersIcon, accent: 'text-silver' },
   { label: 'Products', value: String(stats.products), icon: PackageIcon, accent: 'text-silver' },
   { label: 'Protected files', value: String(stats.files), icon: FolderLockIcon, accent: 'text-silver' }];
 
