@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
-import { Loader2Icon, ShieldAlertIcon } from 'lucide-react';
+import { Loader2Icon, ShieldAlertIcon, CheckCircle2Icon } from 'lucide-react';
 import { AuthShell } from './AuthShell';
 import { useAuth } from '../../contexts/AuthContext';
 
@@ -18,6 +18,7 @@ export function Register() {
   });
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
+  const [confirmEmail, setConfirmEmail] = useState('');
   const { register } = useAuth();
   const navigate = useNavigate();
   const from = (useLocation().state as {from?: string;} | null)?.from;
@@ -34,13 +35,18 @@ export function Register() {
     }
     setBusy(true);
     try {
-      await register({
+      const created = await register({
         name: form.name,
         email: form.email,
         password: form.password,
         company: form.company,
         phone: form.phone
       });
+      if (!created) {
+        // The project requires email confirmation: no session until the link is clicked.
+        setConfirmEmail(form.email.trim());
+        return;
+      }
       navigate(from ?? '/portal/library', { replace: true });
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Could not create account.');
@@ -62,6 +68,24 @@ export function Register() {
         </>
       }>
       
+      {confirmEmail ?
+      <div className="text-center" role="status">
+          <span className="mx-auto flex h-12 w-12 items-center justify-center rounded-full border border-tech/30 bg-tech/10 text-tech">
+            <CheckCircle2Icon size={22} />
+          </span>
+          <p className="mt-5 text-[13.5px] text-silver">
+            Account created. We sent a confirmation link to{' '}
+            <span className="font-medium text-white">{confirmEmail}</span>. Open it,
+            then sign in with the password you just chose.
+          </p>
+          <Link
+          to="/login"
+          className="mt-6 inline-flex w-full items-center justify-center rounded-full bg-electric px-6 py-3.5 text-sm font-semibold text-navy transition-colors hover:bg-electric-soft">
+          
+            Go to sign in
+          </Link>
+        </div> :
+
       <form onSubmit={submit} noValidate className="space-y-4">
         <div>
           <label htmlFor="name" className="mb-2 block text-[12.5px] font-medium text-silver">
@@ -120,6 +144,7 @@ export function Register() {
           {busy ? 'Creating account…' : 'Create account'}
         </button>
       </form>
+      }
     </AuthShell>);
 
 }

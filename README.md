@@ -1,5 +1,7 @@
 # MOTECH Embedded Engineering Ltd Website
 
+> **Accounts:** customer accounts and passwords are stored in a shared database so they work on every device and the admin can see them. One-time setup: see [SETUP-SHARED-ACCOUNTS.md](SETUP-SHARED-ACCOUNTS.md).
+
 > **Engineering Intelligence. Powering Tomorrow.**
 
 Official website for **MOTECH Embedded Engineering Ltd**, an engineering and technology company focused on developing intelligent embedded systems, smart energy solutions, IoT technologies, power quality monitoring systems, data analytics, and intelligent connectivity solutions.

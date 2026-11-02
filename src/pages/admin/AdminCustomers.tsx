@@ -1,18 +1,34 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { KeyRoundIcon, SearchIcon, UserXIcon } from 'lucide-react';
 import { LicenseStatusBadge } from '../../components/store/StatusBadge';
 import { api, formatDate, formatKes } from '../../lib/accessControl';
 
 export function AdminCustomers() {
-  const [customers, setCustomers] = useState(() => api.adminCustomers());
+  const [customers, setCustomers] = useState<Awaited<ReturnType<typeof api.adminCustomers>>>([]);
   const [licenses, setLicenses] = useState(() => api.adminLicenses());
+  const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState('');
   const [query, setQuery] = useState('');
   const [expanded, setExpanded] = useState<string | null>(null);
 
-  const refresh = () => {
-    setCustomers(api.adminCustomers());
-    setLicenses(api.adminLicenses());
+  const refresh = async () => {
+    setLoadError('');
+    try {
+      setCustomers(await api.adminCustomers());
+      setLicenses(api.adminLicenses());
+    } catch (err) {
+      setLoadError(err instanceof Error ? err.message : 'Could not load customers.');
+    } finally {
+      setLoading(false);
+    }
   };
+
+  useEffect(() => {
+    void refresh();
+    // Pick up accounts created on other devices while this page is open.
+    const timer = window.setInterval(() => void refresh(), 30000);
+    return () => window.clearInterval(timer);
+  }, []);
 
   const q = query.trim().toLowerCase();
   const visible = customers.filter(
@@ -42,9 +58,15 @@ export function AdminCustomers() {
         
       </div>
 
+      {loadError &&
+      <p className="rounded-xl border border-red-400/25 bg-red-400/10 p-3 text-[12.5px] text-red-300">
+          {loadError}
+        </p>
+      }
+
       {visible.length === 0 ?
       <p className="glass rounded-2xl p-10 text-center text-[13.5px] text-silver">
-          No customer accounts yet.
+          {loading ? 'Loading customer accounts…' : 'No customer accounts yet.'}
         </p> :
 
       <ul className="space-y-3">

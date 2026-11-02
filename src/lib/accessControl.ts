@@ -10,6 +10,7 @@ import type {
   StoreProduct,
   User } from
 '../types/store';
+import { getRemote } from './remote';
 
 /**
  * MOTECH access-control service (client-side reference implementation).
@@ -141,14 +142,32 @@ function readSession(): Session | null {
   }
 }
 
-function writeSession(userId: string): Session {
+/** Local-only fallback sessions last 8h; with the shared backend the device session is long-lived. */
+const LOCAL_SESSION_MS = 1000 * 60 * 60 * 8;
+const REMOTE_SESSION_MS = 1000 * 60 * 60 * 24 * 30;
+
+function writeSession(userId: string, ttlMs = LOCAL_SESSION_MS): Session {
   const s: Session = {
     token: `mts_${rand(24)}`,
     userId,
-    expiresAt: Date.now() + 1000 * 60 * 60 * 8
+    expiresAt: Date.now() + ttlMs
   };
   sessionStorage.setItem(SESSION_KEY, JSON.stringify(s));
   return s;
+}
+
+/**
+ * With the shared backend the signed-in account lives in the central database. Orders and licences
+ * are still kept per device, so keep a password-less copy of the account in the local store and
+ * point this device's session at it.
+ */
+function mirrorRemoteUser(u: User): void {
+  const db = load();
+  const record = { ...u, password: '' };
+  const i = db.users.findIndex((x) => x.id === u.id);
+  if (i >= 0) db.users[i] = record;else db.users.push(record);
+  save(db);
+  writeSession(u.id, REMOTE_SESSION_MS);
 }
 
 function requireUser(db: Db): User & {password: string;} {
@@ -186,8 +205,17 @@ export const api = {
     password: string;
     company: string;
     phone: string;
-  }): Promise<User> {
+  }): Promise<User | null> {
     await delay();
+    const remote = getRemote();
+    if (remote) {
+      if (input.password.length < 8)
+      throw new Error('Password must be at least 8 characters.');
+      const { user } = await remote.signUp(input);
+      if (!user) return null; // email confirmation required: no session yet
+      mirrorRemoteUser(user);
+      return user;
+    }
     const db = load();
     const email = input.email.trim().toLowerCase();
     if (db.users.some((u) => u.email.toLowerCase() === email))
@@ -213,6 +241,12 @@ export const api = {
 
   async login(email: string, password: string): Promise<User> {
     await delay();
+    const remote = getRemote();
+    if (remote) {
+      const user = await remote.signIn(email, password);
+      mirrorRemoteUser(user);
+      return user;
+    }
     const db = load();
     const user = db.users.find(
       (u) => u.email.toLowerCase() === email.trim().toLowerCase()
@@ -228,10 +262,60 @@ export const api = {
   logout(): void {
     sessionStorage.removeItem(SESSION_KEY);
     grants.clear();
+    void getRemote()?.signOut().catch(() => undefined);
+  },
+
+  /** True when accounts are stored in the shared database (not just this browser). */
+  isRemote(): boolean {
+    return getRemote() !== null;
+  },
+
+  /**
+   * Call once at start-up. Restores this device's signed-in account from the shared backend so a
+   * customer stays signed in between visits. Resolves to the user, or null when signed out.
+   */
+  async init(): Promise<User | null> {
+    const remote = getRemote();
+    if (!remote) return api.currentUser();
+    const user = await remote.restore();
+    if (user) mirrorRemoteUser(user);else
+    sessionStorage.removeItem(SESSION_KEY);
+    return user;
+  },
+
+  /** Fires when the session ends elsewhere (other tab, expiry). Returns an unsubscribe function. */
+  onSignedOut(cb: () => void): () => void {
+    const remote = getRemote();
+    if (!remote) return () => undefined;
+    return remote.onSignedOut(() => {
+      sessionStorage.removeItem(SESSION_KEY);
+      cb();
+    });
+  },
+
+  /** State of the emailed password-reset link (shared backend only). */
+  recovery(): { active: boolean; error: string | null } {
+    return getRemote()?.recovery() ?? { active: false, error: null };
+  },
+
+  /** Finish a password reset started from the emailed link. */
+  async completeRecovery(password: string): Promise<void> {
+    await delay();
+    const remote = getRemote();
+    if (!remote) throw new Error('Password reset by email is not available.');
+    if (password.length < 8) throw new Error('Password must be at least 8 characters.');
+    await remote.updatePassword(password);
+    await remote.signOut(); // make them sign in with the new password
+    sessionStorage.removeItem(SESSION_KEY);
   },
 
   async requestPasswordReset(email: string): Promise<string> {
     await delay();
+    const remote = getRemote();
+    if (remote) {
+      await remote.requestPasswordReset(email);
+      return ''; // the link is emailed; nothing is shown on screen
+    }
     const db = load();
     const user = db.users.find(
       (u) => u.email.toLowerCase() === email.trim().toLowerCase()
@@ -265,6 +349,12 @@ export const api = {
     phone: string;
   }): Promise<User> {
     await delay();
+    const remote = getRemote();
+    if (remote) {
+      const updated = await remote.updateProfile(patch);
+      mirrorRemoteUser(updated);
+      return updated;
+    }
     const db = load();
     const user = requireUser(db);
     user.name = patch.name.trim();
@@ -276,6 +366,15 @@ export const api = {
 
   async changePassword(current: string, next: string): Promise<void> {
     await delay();
+    const remote = getRemote();
+    if (remote) {
+      const me = requireUser(load());
+      if (!(await remote.verifyPassword(me.email, current)))
+      throw new Error('Current password is incorrect.');
+      if (next.length < 8) throw new Error('Password must be at least 8 characters.');
+      await remote.updatePassword(next);
+      return;
+    }
     const db = load();
     const user = requireUser(db);
     if (user.password !== digest(current))
@@ -502,6 +601,14 @@ export const api = {
     };
   },
 
+  /** Number of customer accounts (central count when the shared backend is on). */
+  async adminCustomerCount(): Promise<number> {
+    requireAdmin(load());
+    const remote = getRemote();
+    if (remote) return (await remote.listCustomers()).length;
+    return load().users.filter((u) => u.role === 'customer').length;
+  },
+
   adminOrders(): Array<Order & {customer: User | null;}> {
     const db = load();
     requireAdmin(db);
@@ -514,17 +621,21 @@ export const api = {
     }));
   },
 
-  adminCustomers(): Array<
-    User & {orders: number;verified: number;licenses: number;spend: number;}>
+  /** Every customer account. With the shared backend this is the central list, from any device. */
+  async adminCustomers(): Promise<
+    Array<User & {orders: number;verified: number;licenses: number;spend: number;}>>
   {
     const db = load();
     requireAdmin(db);
-    return db.users.
-    filter((u) => u.role === 'customer').
+    const remote = getRemote();
+    const accounts: User[] = remote ?
+    await remote.listCustomers() :
+    db.users.filter((u) => u.role === 'customer').map(publicUser);
+    return accounts.
     map((u) => {
       const orders = db.orders.filter((o) => o.userId === u.id);
       return {
-        ...publicUser(u),
+        ...u,
         orders: orders.length,
         verified: orders.filter((o) => o.status === 'verified').length,
         licenses: db.licenses.filter(
@@ -595,6 +706,11 @@ export const api = {
     await delay(300);
     const db = load();
     requireAdmin(db);
+    const remote = getRemote();
+    if (remote) {
+      await remote.setDisabled(userId, disabled);
+      return;
+    }
     const user = db.users.find((u) => u.id === userId);
     if (!user) throw new Error('Customer not found.');
     if (user.role === 'admin') throw new Error('Administrator accounts cannot be disabled.');
