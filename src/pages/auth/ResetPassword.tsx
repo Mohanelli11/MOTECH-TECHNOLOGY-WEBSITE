@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { CheckCircle2Icon, Loader2Icon, ShieldAlertIcon } from 'lucide-react';
+import { Turnstile } from '../../components/Turnstile';
 import { AuthShell } from './AuthShell';
 import { api } from '../../lib/accessControl';
 
@@ -240,6 +241,7 @@ function LocalReset() {
             className={field} />
           
           </div>
+          <Turnstile />
           {error &&
         <p className="text-[12.5px] text-red-300">{error}</p>
         }
