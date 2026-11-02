@@ -33,10 +33,6 @@ jobs:
         run: npm test
       - name: Build
         run: npm run build
-        env:
-          # Public values for the shared accounts database (set under Settings > Secrets and variables > Actions > Variables).
-          VITE_SUPABASE_URL: ${{ vars.VITE_SUPABASE_URL }}
-          VITE_SUPABASE_ANON_KEY: ${{ vars.VITE_SUPABASE_ANON_KEY }}
       - name: SPA fallback for client-side routes
         run: cp dist/index.html dist/404.html
       - name: Setup Pages
