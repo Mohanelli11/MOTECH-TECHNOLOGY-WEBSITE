@@ -63,13 +63,6 @@ export type OrderStatus =
 'verified' |
 'rejected';
 
-export type PaymentProof = {
-  fileName: string;
-  sizeLabel: string;
-  uploadedAt: string;
-  note: string;
-};
-
 export type Order = {
   id: string;
   reference: string;
@@ -81,7 +74,6 @@ export type Order = {
   status: OrderStatus;
   createdAt: string;
   reviewedAt: string | null;
-  proof: PaymentProof | null;
   adminNote: string;
   licenseId: string | null;
 };

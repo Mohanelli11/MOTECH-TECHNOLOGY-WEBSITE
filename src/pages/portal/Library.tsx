@@ -1,4 +1,6 @@
 import React, { useMemo } from 'react';
+import { useCommerceSync } from '../../lib/useCommerceSync';
+
 import { Link } from 'react-router-dom';
 import { ClockIcon, FileLock2Icon, LockIcon, StoreIcon } from 'lucide-react';
 import { SecureDownload } from '../../components/store/SecureDownload';
@@ -6,8 +8,9 @@ import { OrderStatusBadge } from '../../components/store/StatusBadge';
 import { api, formatDate } from '../../lib/accessControl';
 
 export function Library() {
-  const orders = useMemo(() => api.myOrders(), []);
-  const licenses = useMemo(() => api.myLicenses(), []);
+  const tick = useCommerceSync();
+  const orders = useMemo(() => api.myOrders(), [tick]);
+  const licenses = useMemo(() => api.myLicenses(), [tick]);
 
   const items = orders.map((order) => {
     const product = api.
@@ -111,11 +114,11 @@ export function Library() {
                 </span>
                 <p className="min-w-0 flex-1 text-[13px] leading-relaxed text-silver">
                   {order.status === 'under_review' &&
-              'Your payment confirmation is being verified by MOTECH. Documentation unlocks as soon as it is approved.'}
+              'Your payment is being confirmed. Documentation unlocks as soon as Paystack reports it.'}
                   {order.status === 'awaiting_payment' &&
-              'Awaiting bank payment. Complete the transfer and upload your confirmation to unlock the documentation.'}
+              'Payment not completed yet. Pay with Paystack to unlock the documentation.'}
                   {order.status === 'rejected' &&
-              `This payment was not verified.${order.adminNote ? ` Note: ${order.adminNote}` : ''} Contact MOTECH to resolve it.`}
+              `This order was cancelled.${order.adminNote ? ` Note: ${order.adminNote}` : ''} Contact MOTECH to resolve it.`}
                   {order.status === 'verified' &&
               'Your licence for this product is currently deactivated. Contact MOTECH support.'}
                 </p>

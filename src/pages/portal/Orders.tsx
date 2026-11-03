@@ -1,10 +1,13 @@
 import React, { useMemo } from 'react';
+import { useCommerceSync } from '../../lib/useCommerceSync';
+
 import { Link } from 'react-router-dom';
 import { OrderStatusBadge } from '../../components/store/StatusBadge';
 import { api, formatDateTime, formatKes } from '../../lib/accessControl';
 
 export function Orders() {
-  const orders = useMemo(() => api.myOrders(), []);
+  const tick = useCommerceSync();
+  const orders = useMemo(() => api.myOrders(), [tick]);
 
   if (orders.length === 0) {
     return (
@@ -13,7 +16,7 @@ export function Orders() {
           No payment history yet
         </h2>
         <p className="mt-2 text-[13.5px] text-silver">
-          Orders and their verification status appear here.
+          Your Paystack payments and their status appear here.
         </p>
         <Link
           to="/store"

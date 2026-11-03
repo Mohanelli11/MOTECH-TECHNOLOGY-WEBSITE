@@ -26,7 +26,7 @@ export function AdminLayout() {
           Marketplace <span className="text-electric">administration</span>
         </>
       }
-      body="Verify bank payments, issue and revoke licences, manage products and upload protected documentation.">
+      body="Track Paystack payments, revoke licences, manage products and upload protected documentation.">
       
       <nav aria-label="Admin sections" className="flex flex-wrap gap-2">
         {tabs.map(({ to, label, icon: Icon, end }) =>

@@ -1,12 +1,15 @@
 import React, { useMemo } from 'react';
+import { useCommerceSync } from '../../lib/useCommerceSync';
+
 import { Link } from 'react-router-dom';
 import { BadgeCheckIcon } from 'lucide-react';
 import { LicenseStatusBadge } from '../../components/store/StatusBadge';
 import { api, formatDate } from '../../lib/accessControl';
 
 export function Licenses() {
-  const licenses = useMemo(() => api.myLicenses(), []);
-  const products = useMemo(() => api.listProducts(true), []);
+  const tick = useCommerceSync();
+  const licenses = useMemo(() => api.myLicenses(), [tick]);
+  const products = useMemo(() => api.listProducts(true), [tick]);
 
   if (licenses.length === 0) {
     return (
@@ -15,8 +18,8 @@ export function Licenses() {
           No licences issued yet
         </h2>
         <p className="mx-auto mt-2 max-w-md text-[13.5px] text-silver">
-          A MOTECH Product Licence ID is issued automatically once your bank payment
-          is verified.
+          A MOTECH Product Licence ID is issued automatically once your Paystack payment
+          is confirmed.
         </p>
         <Link
           to="/store"

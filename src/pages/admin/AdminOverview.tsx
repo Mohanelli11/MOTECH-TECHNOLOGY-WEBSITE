@@ -8,11 +8,13 @@ import {
   UsersIcon,
   WalletIcon } from
 'lucide-react';
+import { useCommerceSync } from '../../lib/useCommerceSync';
 import { api, formatDateTime, formatKes } from '../../lib/accessControl';
 import { OrderStatusBadge } from '../../components/store/StatusBadge';
 
 export function AdminOverview() {
-  const stats = useMemo(() => api.adminStats(), []);
+  const tick = useCommerceSync();
+  const stats = useMemo(() => api.adminStats(), [tick]);
   const [customerCount, setCustomerCount] = useState<number>(stats.customers);
   useEffect(() => {
     let cancelled = false;
@@ -26,10 +28,10 @@ export function AdminOverview() {
       cancelled = true;
     };
   }, []);
-  const recent = useMemo(() => api.adminOrders().slice(0, 6), []);
+  const recent = useMemo(() => api.adminOrders().slice(0, 6), [tick]);
 
   const cards = [
-  { label: 'Awaiting verification', value: String(stats.pending), icon: ClockIcon, accent: 'text-amber-300' },
+  { label: 'Awaiting payment', value: String(stats.awaiting), icon: ClockIcon, accent: 'text-amber-300' },
   { label: 'Verified revenue', value: formatKes(stats.revenue), icon: WalletIcon, accent: 'text-tech' },
   { label: 'Active licences', value: String(stats.activeLicenses), icon: BadgeCheckIcon, accent: 'text-electric' },
   { label: 'Customers', value: String(customerCount), icon: UsersIcon, accent: 'text-silver' },
@@ -68,7 +70,7 @@ export function AdminOverview() {
             to="/admin/orders"
             className="text-[12.5px] font-semibold text-electric">
             
-            Open verification queue
+            View all orders
           </Link>
         </div>
         {recent.length === 0 ?

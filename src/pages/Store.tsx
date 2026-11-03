@@ -48,7 +48,7 @@ export function Store() {
           Products &amp; <span className="text-electric">engineering packages</span>
         </>
       }
-      body="Order MOTECH hardware or licensed digital engineering packages. Protected documentation, firmware and design files unlock only after MOTECH verifies your bank payment."
+      body="Order MOTECH hardware or licensed digital engineering packages. Protected documentation, firmware and design files unlock only after your Paystack payment is confirmed."
       actions={
       <Link
         to="/portal/library"

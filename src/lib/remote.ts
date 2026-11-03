@@ -22,7 +22,44 @@ export type SignUpInput = {
   phone: string;
 };
 
+export type RemoteOrder = {
+  id: string;
+  reference: string;
+  user_id: string;
+  product_id: string;
+  product_name: string;
+  amount: number | string;
+  currency: string;
+  status: 'awaiting_payment' | 'verified' | 'rejected';
+  created_at: string;
+  paid_at: string | null;
+  license_id: string | null;
+  admin_note: string;
+};
+export type RemoteLicense = {
+  id: string;
+  order_id: string;
+  user_id: string;
+  product_id: string;
+  issued_at: string;
+  status: 'active' | 'deactivated';
+};
+export type RemotePrice = { id: string; name: string; price: number | string; status: 'available' | 'preorder' | 'disabled' };
+
+/** Orders, licences and payments (Paystack runs server-side in Supabase Edge Functions). */
+export interface RemoteCommerce {
+  /** RLS decides what comes back: a customer gets their own rows, an admin gets everything. */
+  fetchAll(): Promise<{ orders: RemoteOrder[]; licenses: RemoteLicense[]; prices: RemotePrice[] }>;
+  startPayment(productId: string): Promise<{ authorizationUrl: string; order: RemoteOrder }>;
+  verifyPayment(reference: string): Promise<{ status: string; paystackStatus: string; reason: string | null }>;
+  savePrice(p: { id: string; name: string; price: number; status: string }): Promise<void>;
+  deletePrice(id: string): Promise<void>;
+  revokeOrder(orderId: string, note: string): Promise<void>;
+  setLicenseStatus(licenseId: string, status: 'active' | 'deactivated'): Promise<void>;
+}
+
 export interface RemoteAuth {
+  commerce: RemoteCommerce;
   /** The signed-in user for this device (restored from the stored session), or null. */
   restore(): Promise<User | null>;
   /** user is null when the project requires the customer to confirm their email first. */
@@ -116,7 +153,62 @@ function createSupabaseRemote(sb: SupabaseClient): RemoteAuth {
     throw new Error('Your account profile could not be loaded. Please try again.');
   }
 
+  async function callFn<T>(name: string, body: unknown): Promise<T> {
+    const { data, error } = await sb.functions.invoke(name, { body: body as Record<string, unknown> });
+    if (error) {
+      // supabase-js hides the JSON body of non-2xx replies inside error.context
+      let detail = '';
+      try {
+        const ctx = (error as { context?: Response }).context;
+        if (ctx && typeof ctx.json === 'function') detail = (await ctx.json())?.error ?? '';
+      } catch {/* ignore */}
+      throw friendlyAuthError({ message: detail || error.message });
+    }
+    if (data && typeof data === 'object' && 'error' in data && (data as { error?: string }).error)
+    throw new Error(String((data as { error: string }).error));
+    return data as T;
+  }
+
+  const commerce: RemoteCommerce = {
+    async fetchAll() {
+      const [o, l, p] = await Promise.all([
+      sb.from('orders').select('*').order('created_at', { ascending: false }),
+      sb.from('licenses').select('*'),
+      sb.from('product_prices').select('id,name,price,status')]);
+      if (o.error) throw friendlyAuthError(o.error);
+      if (l.error) throw friendlyAuthError(l.error);
+      return {
+        orders: (o.data ?? []) as RemoteOrder[],
+        licenses: (l.data ?? []) as RemoteLicense[],
+        // prices are optional: before payments.sql is run this table is simply absent
+        prices: (p.error ? [] : p.data ?? []) as RemotePrice[]
+      };
+    },
+    startPayment: (productId) =>
+    callFn('paystack-init', { productId, origin: window.location.origin }),
+    verifyPayment: (reference) => callFn('paystack-verify', { reference }),
+    async savePrice(p) {
+      const { error } = await sb.from('product_prices').upsert({ ...p, updated_at: new Date().toISOString() });
+      if (error) throw friendlyAuthError(error);
+    },
+    async deletePrice(id) {
+      const { error } = await sb.from('product_prices').delete().eq('id', id);
+      if (error) throw friendlyAuthError(error);
+    },
+    async revokeOrder(orderId, note) {
+      const o = await sb.from('orders').update({ status: 'rejected', admin_note: note }).eq('id', orderId);
+      if (o.error) throw friendlyAuthError(o.error);
+      const l = await sb.from('licenses').update({ status: 'deactivated' }).eq('order_id', orderId);
+      if (l.error) throw friendlyAuthError(l.error);
+    },
+    async setLicenseStatus(licenseId, status) {
+      const { error } = await sb.from('licenses').update({ status }).eq('id', licenseId);
+      if (error) throw friendlyAuthError(error);
+    }
+  };
+
   return {
+    commerce,
     async restore() {
       const { data } = await sb.auth.getSession();
       if (!data.session) return null;

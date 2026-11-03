@@ -9,6 +9,7 @@ import { Home } from './pages/Home';
 import { Store } from './pages/Store';
 import { ProductDetail } from './pages/ProductDetail';
 import { Checkout } from './pages/Checkout';
+import { PaymentComplete } from './pages/PaymentComplete';
 import { Login } from './pages/auth/Login';
 import { Register } from './pages/auth/Register';
 import { ResetPassword } from './pages/auth/ResetPassword';
@@ -69,6 +70,14 @@ export function App() {
             <Route path="/login" element={<Login />} />
             <Route path="/register" element={<Register />} />
             <Route path="/reset-password" element={<ResetPassword />} />
+            <Route
+              path="/payment/complete"
+              element={
+              <RequireAuth>
+                  <PaymentComplete />
+                </RequireAuth>
+              } />
+            
             <Route
               path="/checkout/:slug"
               element={

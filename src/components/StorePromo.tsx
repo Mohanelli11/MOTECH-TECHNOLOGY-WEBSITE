@@ -19,13 +19,13 @@ const journey = [
 },
 {
   icon: ShieldCheckIcon,
-  title: 'Bank payment',
-  body: 'Pay to the MOTECH I&M account quoting your payment reference.'
+  title: 'Pay with Paystack',
+  body: 'Pay securely by card or M-Pesa on Paystack’s checkout page.'
 },
 {
   icon: BadgeCheckIcon,
   title: 'Licence issued',
-  body: 'Once MOTECH verifies the payment, a licence ID is issued to you.'
+  body: 'As soon as Paystack confirms the payment, a licence ID is issued to you.'
 },
 {
   icon: FileLock2Icon,
@@ -51,7 +51,7 @@ export function StorePromo() {
               <span className="text-electric">licensed documentation</span>
             </>
           }
-          body="A professional engineering marketplace: order devices or digital design packages, pay by bank transfer, and receive licensed access to protected manuals, firmware and design files." />
+          body="A professional engineering marketplace: order devices or digital design packages, pay securely with Paystack, and receive licensed access to protected manuals, firmware and design files." />
         
 
         <ol className="mt-14 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
