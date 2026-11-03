@@ -1,4 +1,5 @@
 import React, { useMemo } from 'react';
+import { useCommerceSync } from '../lib/useCommerceSync';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import {
   ArrowLeftIcon,
@@ -33,7 +34,8 @@ function SpecTable({ title, rows }: {title: string;rows: SpecRow[];}) {
 
 export function ProductDetail() {
   const { slug = '' } = useParams();
-  const product = useMemo(() => api.getProduct(slug), [slug]);
+  const tick = useCommerceSync();
+  const product = useMemo(() => api.getProduct(slug), [slug, tick]);
   const files = useMemo(
     () => product ? api.listProductFiles(product.id) : [],
     [product]
@@ -174,7 +176,7 @@ export function ProductDetail() {
             <p className="mt-3 text-[12.5px] leading-relaxed text-silver">
               {files.length} licensed resource{files.length === 1 ? '' : 's'} are
               included. Titles are listed for reference — files are released only
-              after payment verification.
+              after your payment is confirmed.
             </p>
             <ul className="mt-4 divide-y divide-white/8">
               {files.map((f) =>
@@ -202,7 +204,7 @@ export function ProductDetail() {
 
             <p className="mt-5 flex items-start gap-2 rounded-xl border border-white/10 bg-navy-800/60 p-4 text-[12.5px] text-silver">
                 <LockIcon size={14} className="mt-0.5 shrink-0 text-electric" />
-                Purchase and payment verification are required before any download
+                Purchase and payment confirmation are required before any download
                 link is issued.
               </p>
             }
@@ -216,7 +218,7 @@ export function ProductDetail() {
               {formatKes(product.price)}
             </p>
             <p className="mt-1 text-[12px] text-silver-dark">
-              Payable by bank transfer to I&amp;M Bank Kenya Ltd · excl. VAT
+              Pay securely with Paystack · card or M-Pesa · excl. VAT
             </p>
             <button
               type="button"

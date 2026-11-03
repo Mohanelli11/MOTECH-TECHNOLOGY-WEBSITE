@@ -1,10 +1,9 @@
-import { bankDetails, catalog, protectedFiles } from '../data/catalog';
+import { catalog, protectedFiles } from '../data/catalog';
 import type {
   DownloadGrant,
   License,
   Order,
   OrderStatus,
-  PaymentProof,
   ProtectedFile,
   Session,
   StoreProduct,
@@ -187,8 +186,6 @@ function requireAdmin(db: Db): User & {password: string;} {
 }
 
 export const api = {
-  bankDetails,
-
   /* ---------------------------------------------------------------- session */
 
   currentUser(): User | null {
@@ -402,33 +399,77 @@ export const api = {
 
   /* ------------------------------------------------------------------ orders */
 
-  async createOrder(productId: string): Promise<Order> {
-    await delay();
+  /**
+   * Start a Paystack checkout. The server creates the order from its own price list and returns
+   * Paystack's payment page address; the browser never decides the amount.
+   */
+  async startPayment(productId: string): Promise<{authorizationUrl: string;}> {
+    const remote = getRemote();
+    if (!remote) throw new Error('Online payments are not available right now. Please contact MOTECH.');
+    requireUser(load());
+    const { authorizationUrl } = await remote.commerce.startPayment(productId);
+    if (!authorizationUrl) throw new Error('Could not start the payment. Please try again.');
+    return { authorizationUrl };
+  },
+
+  /** Ask the server to confirm a payment with Paystack (used by the return page). */
+  async verifyPayment(reference: string): Promise<{status: string;paystackStatus: string;reason: string | null;}> {
+    const remote = getRemote();
+    if (!remote) throw new Error('Online payments are not available right now.');
+    const result = await remote.commerce.verifyPayment(reference);
+    await api.syncCommerce();
+    return result;
+  },
+
+  /**
+   * Pull this account's orders and licences (and every customer's, for an admin) plus the
+   * server price list into this device. Row-level security decides what comes back.
+   */
+  async syncCommerce(): Promise<void> {
+    const remote = getRemote();
+    if (!remote) return;
+    const session = readSession();
+    if (!session) return;
+    const { orders, licenses, prices } = await remote.commerce.fetchAll();
     const db = load();
-    const user = requireUser(db);
-    const product = db.products.find((p) => p.id === productId);
-    if (!product) throw new Error('Product not found.');
-    if (product.status === 'disabled')
-    throw new Error('This product is not currently available.');
-    const seq = String(db.orders.length + 1).padStart(4, '0');
-    const order: Order = {
-      id: `MT-ORD-${new Date().getFullYear()}-${seq}`,
-      reference: `MTPAY-${rand(6)}-${seq}`,
-      userId: user.id,
-      productId: product.id,
-      productName: product.name,
-      amount: product.price,
-      currency: 'KES',
-      status: 'awaiting_payment',
-      createdAt: nowIso(),
-      reviewedAt: null,
-      proof: null,
-      adminNote: '',
-      licenseId: null
-    };
-    db.orders.unshift(order);
+    const me = db.users.find((u) => u.id === session.userId);
+    db.orders = orders.map((o) => ({
+      id: o.id,
+      reference: o.reference,
+      userId: o.user_id,
+      productId: o.product_id,
+      productName: o.product_name,
+      amount: Number(o.amount),
+      currency: 'KES' as const,
+      status: o.status,
+      createdAt: o.created_at,
+      reviewedAt: o.paid_at,
+      adminNote: o.admin_note ?? '',
+      licenseId: o.license_id
+    }));
+    db.licenses = licenses.map((l) => ({
+      id: l.id,
+      orderId: l.order_id,
+      userId: l.user_id,
+      productId: l.product_id,
+      issuedAt: l.issued_at,
+      status: l.status
+    }));
+    for (const pr of prices) {
+      const prod = db.products.find((x) => x.id === pr.id);
+      if (prod) {
+        prod.price = Number(pr.price);
+        prod.status = pr.status;
+      }
+    }
+    if (me?.role === 'admin') {
+      for (const c of await remote.listCustomers()) {
+        const i = db.users.findIndex((x) => x.id === c.id);
+        const rec = { ...c, password: '' };
+        if (i >= 0) db.users[i] = rec;else db.users.push(rec);
+      }
+    }
     save(db);
-    return order;
   },
 
   getOrder(orderId: string): Order | undefined {
@@ -453,22 +494,6 @@ export const api = {
     return db.licenses.filter((l) => l.userId === user.id);
   },
 
-  async submitPaymentProof(
-  orderId: string,
-  proof: PaymentProof)
-  : Promise<Order> {
-    await delay(700);
-    const db = load();
-    const user = requireUser(db);
-    const order = db.orders.find((o) => o.id === orderId);
-    if (!order || order.userId !== user.id) throw new Error('Order not found.');
-    if (order.status === 'verified')
-    throw new Error('This order has already been verified.');
-    order.proof = proof;
-    order.status = 'under_review';
-    save(db);
-    return order;
-  },
 
   /* ---------------------------------------------------- protected downloads */
 
@@ -663,6 +688,16 @@ export const api = {
     await delay();
     const db = load();
     requireAdmin(db);
+    const remote = getRemote();
+    if (remote) {
+      // Payments are confirmed by Paystack only; an admin can revoke, never grant.
+      if (status !== 'rejected') throw new Error('Payments are confirmed automatically by Paystack.');
+      await remote.commerce.revokeOrder(orderId, note);
+      await api.syncCommerce();
+      const fresh = load().orders.find((o) => o.id === orderId);
+      if (!fresh) throw new Error('Order not found.');
+      return fresh;
+    }
     const order = db.orders.find((o) => o.id === orderId);
     if (!order) throw new Error('Order not found.');
     order.status = status;
@@ -696,6 +731,12 @@ export const api = {
     await delay(300);
     const db = load();
     requireAdmin(db);
+    const remote = getRemote();
+    if (remote) {
+      await remote.commerce.setLicenseStatus(licenseId, status);
+      await api.syncCommerce();
+      return;
+    }
     const license = db.licenses.find((l) => l.id === licenseId);
     if (!license) throw new Error('Licence not found.');
     license.status = status;
@@ -735,6 +776,14 @@ export const api = {
     await delay(350);
     const db = load();
     requireAdmin(db);
+    const remote = getRemote();
+    if (remote)
+    await remote.commerce.savePrice({
+      id: product.id,
+      name: product.name,
+      price: product.price,
+      status: product.status
+    });
     const idx = db.products.findIndex((p) => p.id === product.id);
     if (idx >= 0) db.products[idx] = product;else
     db.products.unshift(product);
@@ -745,6 +794,8 @@ export const api = {
     await delay(300);
     const db = load();
     requireAdmin(db);
+    const remote = getRemote();
+    if (remote) await remote.commerce.deletePrice(productId);
     db.products = db.products.filter((p) => p.id !== productId);
     db.files = db.files.filter((f) => f.productId !== productId);
     save(db);

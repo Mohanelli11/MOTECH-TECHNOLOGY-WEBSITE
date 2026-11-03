@@ -1,7 +1,6 @@
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
+import { useCommerceSync } from '../../lib/useCommerceSync';
 import {
-  CheckCircle2Icon,
-  FileTextIcon,
   Loader2Icon,
   SearchIcon,
   XCircleIcon } from
@@ -14,14 +13,15 @@ type Row = Order & {customer: User | null;};
 
 const filters: Array<{label: string;value: 'all' | OrderStatus;}> = [
 { label: 'All', value: 'all' },
-{ label: 'Under review', value: 'under_review' },
 { label: 'Awaiting payment', value: 'awaiting_payment' },
-{ label: 'Verified', value: 'verified' },
-{ label: 'Rejected', value: 'rejected' }];
+{ label: 'Paid', value: 'verified' },
+{ label: 'Revoked', value: 'rejected' }];
 
 
 export function AdminOrders() {
+  const tick = useCommerceSync();
   const [rows, setRows] = useState<Row[]>(() => api.adminOrders());
+  useEffect(() => setRows(api.adminOrders()), [tick]);
   const [filter, setFilter] = useState<'all' | OrderStatus>('all');
   const [query, setQuery] = useState('');
   const [busy, setBusy] = useState('');
@@ -40,10 +40,10 @@ export function AdminOrders() {
     });
   }, [rows, filter, query]);
 
-  const setStatus = async (id: string, status: 'verified' | 'rejected') => {
+  const revoke = async (id: string) => {
     setBusy(id);
     try {
-      await api.adminSetOrderStatus(id, status, note[id] ?? '');
+      await api.adminSetOrderStatus(id, 'rejected', note[id] ?? '');
       setRows(api.adminOrders());
     } finally {
       setBusy('');
@@ -113,8 +113,8 @@ export function AdminOrders() {
             { k: 'Email', v: o.customer?.email ?? '—' },
             { k: 'Amount', v: formatKes(o.amount) },
             { k: 'Payment reference', v: o.reference },
-            { k: 'Payment date', v: o.proof ? formatDateTime(o.proof.uploadedAt) : '—' },
-            { k: 'Reviewed', v: formatDateTime(o.reviewedAt) },
+            { k: 'Paid on', v: o.status === 'verified' || o.reviewedAt ? formatDateTime(o.reviewedAt) : '—' },
+            { k: 'Payment method', v: 'Paystack' },
             { k: 'Licence', v: o.licenseId ?? '—' },
             { k: 'Company', v: o.customer?.company || '—' }].
             map((cell) =>
@@ -127,65 +127,32 @@ export function AdminOrders() {
             )}
               </dl>
 
-              <div className="mt-5 rounded-xl border border-white/10 bg-navy-800/60 p-4">
-                <p className="font-mono text-[9.5px] uppercase tracking-[0.18em] text-silver-dark">
-                  Uploaded payment proof
-                </p>
-                {o.proof ?
-            <div className="mt-2 flex flex-wrap items-center gap-3">
-                    <span className="inline-flex items-center gap-2 rounded-lg border border-white/12 px-3 py-1.5 text-[12.5px] text-white">
-                      <FileTextIcon size={14} className="text-electric" />
-                      {o.proof.fileName}
-                      <span className="text-silver-dark">{o.proof.sizeLabel}</span>
-                    </span>
-                    {o.proof.note &&
-              <span className="text-[12.5px] text-silver">“{o.proof.note}”</span>
-              }
-                  </div> :
-
-            <p className="mt-2 text-[12.5px] text-silver">
-                    No proof uploaded yet.
-                  </p>
-            }
-              </div>
-
               {o.adminNote &&
           <p className="mt-3 text-[12px] text-silver">
                   Admin note: <span className="text-white/90">{o.adminNote}</span>
                 </p>
           }
 
-              <div className="mt-5 flex flex-wrap items-center gap-3">
+              {o.status === 'verified' &&
+          <div className="mt-5 flex flex-wrap items-center gap-3">
                 <input
-              aria-label={`Verification note for ${o.id}`}
+              aria-label={`Revocation note for ${o.id}`}
               value={note[o.id] ?? ''}
               onChange={(e) => setNote((n) => ({ ...n, [o.id]: e.target.value }))}
-              placeholder="Verification note (optional)"
+              placeholder="Reason (optional), e.g. refunded in Paystack"
               className="min-w-[220px] flex-1 rounded-full border border-white/12 bg-navy-800/70 px-4 py-2.5 text-[12.5px] text-white placeholder:text-silver-dark/70 outline-none focus:border-electric/70" />
             
                 <button
               type="button"
-              onClick={() => setStatus(o.id, 'verified')}
-              disabled={busy === o.id || o.status === 'verified'}
-              className="inline-flex items-center gap-2 rounded-full bg-tech px-5 py-2.5 text-[12.5px] font-semibold text-navy transition-colors hover:bg-tech-soft disabled:opacity-50">
-              
-                  {busy === o.id ?
-              <Loader2Icon size={14} className="animate-spin" /> :
-
-              <CheckCircle2Icon size={14} />
-              }
-                  Approve payment
-                </button>
-                <button
-              type="button"
-              onClick={() => setStatus(o.id, 'rejected')}
-              disabled={busy === o.id || o.status === 'rejected'}
+              onClick={() => revoke(o.id)}
+              disabled={busy === o.id}
               className="inline-flex items-center gap-2 rounded-full border border-red-400/35 bg-red-400/10 px-5 py-2.5 text-[12.5px] font-semibold text-red-300 transition-colors hover:bg-red-400/20 disabled:opacity-50">
               
-                  <XCircleIcon size={14} />
-                  Reject
+                  {busy === o.id ? <Loader2Icon size={14} className="animate-spin" /> : <XCircleIcon size={14} />}
+                  Revoke licence
                 </button>
               </div>
+          }
             </li>
         )}
         </ul>

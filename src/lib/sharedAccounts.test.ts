@@ -36,6 +36,12 @@ class FakeServer {
     const me = () => [...server.users.values()].find((u) => u.profile.id === signedInId);
     const listeners = new Set<() => void>();
     return {
+      commerce: {
+        fetchAll: async () => ({ orders: [], licenses: [], prices: [] }),
+        startPayment: async () => { throw new Error('n/a'); },
+        verifyPayment: async () => ({ status: 'awaiting_payment', paystackStatus: 'abandoned', reason: null }),
+        savePrice: async () => {}, deletePrice: async () => {}, revokeOrder: async () => {}, setLicenseStatus: async () => {}
+      },
       async restore() {
         const u = me();
         return u && !u.profile.disabled ? { ...u.profile } : null;

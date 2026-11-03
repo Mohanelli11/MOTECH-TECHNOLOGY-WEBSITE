@@ -14,6 +14,7 @@ export function AdminCustomers() {
   const refresh = async () => {
     setLoadError('');
     try {
+      await api.syncCommerce().catch(() => undefined);
       setCustomers(await api.adminCustomers());
       setLicenses(api.adminLicenses());
     } catch (err) {
