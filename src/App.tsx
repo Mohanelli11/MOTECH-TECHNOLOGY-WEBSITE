@@ -9,6 +9,11 @@ import { Home } from './pages/Home';
 import { Store } from './pages/Store';
 import { ProductDetail } from './pages/ProductDetail';
 import { Checkout } from './pages/Checkout';
+import { StudentsHome } from './pages/students/StudentsHome';
+import { StudentProjectDetail } from './pages/students/StudentProjectDetail';
+import { StudentCheckout } from './pages/students/StudentCheckout';
+import { MyProjects } from './pages/students/MyProjects';
+import { AdminStudents } from './pages/admin/AdminStudents';
 import { PaymentComplete } from './pages/PaymentComplete';
 import { Login } from './pages/auth/Login';
 import { Register } from './pages/auth/Register';
@@ -67,6 +72,24 @@ export function App() {
             <Route path="/" element={<Home />} />
             <Route path="/store" element={<Store />} />
             <Route path="/store/:slug" element={<ProductDetail />} />
+            <Route path="/students" element={<StudentsHome />} />
+            <Route
+              path="/students/my-projects"
+              element={
+              <RequireAuth>
+                  <MyProjects />
+                </RequireAuth>
+              } />
+            
+            <Route
+              path="/students/checkout/:slug"
+              element={
+              <RequireAuth>
+                  <StudentCheckout />
+                </RequireAuth>
+              } />
+            
+            <Route path="/students/:slug" element={<StudentProjectDetail />} />
             <Route path="/login" element={<Login />} />
             <Route path="/register" element={<Register />} />
             <Route path="/reset-password" element={<ResetPassword />} />
@@ -113,6 +136,7 @@ export function App() {
               <Route path="products" element={<AdminProducts />} />
               <Route path="documentation" element={<AdminDocumentation />} />
               <Route path="customers" element={<AdminCustomers />} />
+              <Route path="students" element={<AdminStudents />} />
             </Route>
             <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>

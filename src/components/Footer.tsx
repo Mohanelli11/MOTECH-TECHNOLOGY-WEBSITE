@@ -17,6 +17,7 @@ import { whatsappLink } from '../utils/contact';
 
 const quickLinks = [
 { label: 'Store & Documentation', href: '/store' },
+{ label: 'MOTECH for Engineering Students', href: '/students' },
 { label: 'My Library', href: '/portal/library' },
 { label: 'Sign in / Register', href: '/login' },
 { label: 'Request Demo', href: '/#contact' },

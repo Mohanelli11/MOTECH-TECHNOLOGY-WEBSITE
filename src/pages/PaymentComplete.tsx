@@ -13,6 +13,7 @@ export function PaymentComplete() {
   const [state, setState] = useState<State>('checking');
   const [message, setMessage] = useState('');
   const started = useRef(false);
+  const [libraryPath, setLibraryPath] = useState('/portal/library');
 
   useEffect(() => {
     if (started.current) return;
@@ -28,7 +29,11 @@ export function PaymentComplete() {
       for (let attempt = 0; attempt < 14 && !cancelled; attempt++) {
         try {
           const r = await api.verifyPayment(reference);
-          if (r.status === 'verified') return !cancelled && setState('paid');
+          if (r.status === 'verified') {
+            const o = api.myOrders().find((x) => x.reference === reference);
+            if (o?.productId.startsWith('prj-')) setLibraryPath('/students/my-projects');
+            return !cancelled && setState('paid');
+          }
           if (['failed', 'abandoned', 'reversed'].includes(r.paystackStatus)) {
             setMessage('The payment was not completed. You have not been charged.');
             return !cancelled && setState('failed');
@@ -68,10 +73,10 @@ export function PaymentComplete() {
               Thank you. Your licence has been issued and your downloads are unlocked.
             </p>
             <Link
-            to="/portal/library"
+            to={libraryPath}
             className="mt-6 inline-flex rounded-full bg-electric px-6 py-3 text-[13px] font-semibold text-navy hover:bg-electric-soft">
             
-              Open my library
+              {libraryPath === '/students/my-projects' ? 'Open my projects' : 'Open my library'}
             </Link>
           </>
         }

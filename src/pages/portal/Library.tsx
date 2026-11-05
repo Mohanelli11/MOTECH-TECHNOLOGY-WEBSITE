@@ -9,7 +9,7 @@ import { api, formatDate } from '../../lib/accessControl';
 
 export function Library() {
   const tick = useCommerceSync();
-  const orders = useMemo(() => api.myOrders(), [tick]);
+  const orders = useMemo(() => api.myOrders().filter((o) => !o.productId.startsWith('prj-')), [tick]);
   const licenses = useMemo(() => api.myLicenses(), [tick]);
 
   const items = orders.map((order) => {

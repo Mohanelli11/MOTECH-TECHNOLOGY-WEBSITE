@@ -8,7 +8,7 @@ import { api, formatDate } from '../../lib/accessControl';
 
 export function Licenses() {
   const tick = useCommerceSync();
-  const licenses = useMemo(() => api.myLicenses(), [tick]);
+  const licenses = useMemo(() => api.myLicenses().filter((l) => !l.productId.startsWith('prj-')), [tick]);
   const products = useMemo(() => api.listProducts(true), [tick]);
 
   if (licenses.length === 0) {

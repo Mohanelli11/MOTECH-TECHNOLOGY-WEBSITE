@@ -2,6 +2,7 @@ import React from 'react';
 import { NavLink, Outlet } from 'react-router-dom';
 import {
   FolderLockIcon,
+  GraduationCapIcon,
   LayoutDashboardIcon,
   PackageIcon,
   ReceiptTextIcon,
@@ -14,7 +15,8 @@ const tabs = [
 { to: '/admin/orders', label: 'Orders & Payments', icon: ReceiptTextIcon },
 { to: '/admin/products', label: 'Products', icon: PackageIcon },
 { to: '/admin/documentation', label: 'Documentation', icon: FolderLockIcon },
-{ to: '/admin/customers', label: 'Customers', icon: UsersIcon }];
+{ to: '/admin/customers', label: 'Customers', icon: UsersIcon },
+{ to: '/admin/students', label: 'Student Projects', icon: GraduationCapIcon }];
 
 
 export function AdminLayout() {
