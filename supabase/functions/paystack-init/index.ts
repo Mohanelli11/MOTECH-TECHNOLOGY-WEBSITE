@@ -26,7 +26,15 @@ Deno.serve(async (req) => {
     if (!profile || profile.disabled) return reply({ error: 'This account cannot place orders.' }, 403);
 
     const { productId, origin: siteOrigin } = await req.json();
-    const { data: product } = await db.from('product_prices').select('*').eq('id', String(productId)).maybeSingle();
+    // Student-marketplace projects live in their own table; everything else uses the main price list.
+    let product: { id: string; name: string; price: number; currency: string; status: string } | null = null;
+    if (String(productId).startsWith('prj-')) {
+      const { data: prj } = await db.from('student_projects').select('id,title,price,currency,status').eq('id', String(productId)).maybeSingle();
+      if (prj) product = { id: prj.id, name: prj.title, price: prj.price, currency: prj.currency, status: prj.status === 'available' ? 'available' : 'disabled' };
+    } else {
+      const { data: row } = await db.from('product_prices').select('*').eq('id', String(productId)).maybeSingle();
+      product = row;
+    }
     if (!product || product.status === 'disabled') return reply({ error: 'This product is not currently available.' }, 400);
 
     const base = ALLOWED_ORIGINS.includes(siteOrigin) ? siteOrigin : ALLOWED_ORIGINS[0];

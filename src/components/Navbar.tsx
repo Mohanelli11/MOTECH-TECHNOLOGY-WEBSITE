@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { AnimatePresence, motion } from 'framer-motion';
 import {
+  GraduationCapIcon,
   LayoutDashboardIcon,
   LibraryIcon,
   LogOutIcon,
@@ -114,6 +115,19 @@ export function Navbar() {
             })}
             <li>
               <Link
+                to="/students"
+                className={`ml-1 inline-flex items-center gap-1.5 rounded-full border px-3 py-2 text-[13px] font-medium transition-colors ${
+                pathname.startsWith('/students') ?
+                'border-electric/45 bg-electric/10 text-electric' :
+                'border-white/12 text-silver hover:border-electric/40 hover:text-electric'}`
+                }>
+                
+                <GraduationCapIcon size={14} />
+                Students
+              </Link>
+            </li>
+            <li>
+              <Link
                 to="/store"
                 className={`ml-1 inline-flex items-center gap-1.5 rounded-full border px-3 py-2 text-[13px] font-medium transition-colors ${
                 pathname.startsWith('/store') ?
@@ -212,6 +226,16 @@ export function Navbar() {
                     </button>
                   </li>
               )}
+                <li>
+                  <Link
+                  to="/students"
+                  onClick={() => setOpen(false)}
+                  className="flex items-center gap-2 rounded-lg px-3 py-3 text-[15px] font-medium text-electric transition-colors hover:bg-white/5">
+                  
+                    <GraduationCapIcon size={16} />
+                    MOTECH for Engineering Students
+                  </Link>
+                </li>
                 <li>
                   <Link
                   to="/store"

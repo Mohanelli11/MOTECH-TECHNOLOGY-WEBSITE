@@ -331,6 +331,7 @@ function createSupabaseRemote(sb: SupabaseClient): RemoteAuth {
 }
 
 let instance: RemoteAuth | null | undefined;
+let client: SupabaseClient | null = null;
 let override: RemoteAuth | null | undefined;
 
 /** The shared backend, or null when it has not been configured (browser-only fallback). */
@@ -348,17 +349,23 @@ export function getRemote(): RemoteAuth | null {
     );
     return null;
   }
-  instance = createSupabaseRemote(
-    createClient(url, key, {
-      auth: {
-        persistSession: true, // stay signed in on this device
-        autoRefreshToken: true,
-        detectSessionInUrl: true, // reads the password-reset link
-        storageKey: 'motech.auth.v1'
-      }
-    })
-  );
+  client = createClient(url, key, {
+    auth: {
+      persistSession: true, // stay signed in on this device
+      autoRefreshToken: true,
+      detectSessionInUrl: true, // reads the password-reset link
+      storageKey: 'motech.auth.v1'
+    }
+  });
+  instance = createSupabaseRemote(client);
   return instance;
+}
+
+/** The raw Supabase client (shares the signed-in session), or null when not configured. */
+export function getSupabase(): SupabaseClient | null {
+  if (override !== undefined) return null;
+  getRemote();
+  return client;
 }
 
 /** Test hook: inject a fake backend (pass undefined to restore normal behaviour). */
