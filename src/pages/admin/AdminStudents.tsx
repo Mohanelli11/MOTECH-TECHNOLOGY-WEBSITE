@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { GraduationCapIcon, Loader2Icon, PencilIcon, PlusIcon, Trash2Icon, UploadIcon } from 'lucide-react';
 import { formatKes } from '../../lib/accessControl';
-import { newProjectId, slugify, studentsApi, type Project, type ProjectStatus } from '../../lib/students';
+import { checkDemoVideo, MAX_DEMO_SECONDS, newProjectId, slugify, studentsApi, type Project, type ProjectStatus } from '../../lib/students';
 import { useProjects } from '../../lib/useProjects';
 
 const field =
@@ -21,18 +21,21 @@ type Draft = {
   includes: string;
   imageUrl: string;
   filePath: string | null;
+  demoVideoUrl: string;
+  demoVideoPath: string | null;
+  demoDuration: number | null;
   isNew: boolean;
 };
 
 const blank = (): Draft => ({
   id: newProjectId(), slug: '', title: '', summary: '', description: '', category: 'Embedded Systems',
-  level: 'Final-year', price: '', status: 'draft', tags: '', includes: '', imageUrl: '', filePath: null, isNew: true
+  level: 'Final-year', price: '', status: 'draft', tags: '', includes: '', imageUrl: '', filePath: null, demoVideoUrl: '', demoVideoPath: null, demoDuration: null, isNew: true
 });
 
 const toDraft = (p: Project): Draft => ({
   id: p.id, slug: p.slug, title: p.title, summary: p.summary, description: p.description, category: p.category,
   level: p.level, price: String(p.price), status: p.status, tags: p.tags.join(', '), includes: p.includes.join('\n'),
-  imageUrl: p.imageUrl, filePath: p.filePath, isNew: false
+  imageUrl: p.imageUrl, filePath: p.filePath, demoVideoUrl: p.demoVideoUrl, demoVideoPath: p.demoVideoPath, demoDuration: p.demoDuration, isNew: false
 });
 
 const statusTone: Record<ProjectStatus, string> = {
@@ -46,6 +49,8 @@ export function AdminStudents() {
   const [draft, setDraft] = useState<Draft | null>(null);
   const [image, setImage] = useState<File | null>(null);
   const [pack, setPack] = useState<File | null>(null);
+  const [demo, setDemo] = useState<File | null>(null);
+  const [demoNote, setDemoNote] = useState('');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
 
@@ -53,7 +58,23 @@ export function AdminStudents() {
     setDraft(d);
     setImage(null);
     setPack(null);
+    setDemo(null);
+    setDemoNote('');
     setError('');
+  };
+
+  const pickDemo = async (f: File | null) => {
+    setDemo(null);
+    setDemoNote('');
+    if (!f) return;
+    try {
+      const problem = await checkDemoVideo(f);
+      if (problem) return setDemoNote(problem);
+      setDemo(f);
+      setDemoNote(`Ready: ${f.name} (${(f.size / 1048576).toFixed(1)} MB)`);
+    } catch (e) {
+      setDemoNote(e instanceof Error ? e.message : 'Could not read the video.');
+    }
   };
 
   const save = async () => {
@@ -81,9 +102,12 @@ export function AdminStudents() {
           tags: draft.tags.split(',').map((t) => t.trim()).filter(Boolean),
           includes: draft.includes.split('\n').map((t) => t.trim()).filter(Boolean),
           imageUrl: draft.imageUrl,
-          filePath: draft.filePath
+          filePath: draft.filePath,
+          demoVideoUrl: draft.demoVideoUrl,
+          demoVideoPath: draft.demoVideoPath,
+          demoDuration: draft.demoDuration
         },
-        { image, package: pack }
+        { image, package: pack, demo }
       );
       setDraft(null);
       await reload();
@@ -161,6 +185,34 @@ export function AdminStudents() {
                 <UploadIcon size={15} /> {image ? image.name : 'Choose an image (JPG/PNG)'}
                 <input type="file" accept="image/*" className="sr-only" onChange={(e) => setImage(e.target.files?.[0] ?? null)} />
               </label>
+            </div>
+            <div className="md:col-span-2 text-[12px] text-silver">
+              Demo video <span className="text-silver-dark">(MP4 or WebM, maximum {MAX_DEMO_SECONDS / 60} minutes and 50 MB)</span>
+              {draft.demoVideoUrl && !demo && <span className="text-tech"> (uploaded{draft.demoDuration ? `, ${Math.floor(draft.demoDuration / 60)}:${String(draft.demoDuration % 60).padStart(2, '0')}` : ''})</span>}
+              <label className="mt-1.5 flex cursor-pointer items-center gap-2 rounded-xl border border-dashed border-white/20 px-4 py-3 text-[12.5px] hover:border-electric/50">
+                <UploadIcon size={15} /> {demo ? demo.name : 'Choose a demo video'}
+                <input type="file" accept="video/mp4,video/webm" className="sr-only" onChange={(e) => pickDemo(e.target.files?.[0] ?? null)} />
+              </label>
+              {demoNote && <p className={`mt-1.5 ${demo ? 'text-tech' : 'text-red-300'}`}>{demoNote}</p>}
+              {draft.demoVideoUrl && !demo && !draft.isNew &&
+              <button
+                type="button"
+                onClick={async () => {
+                  const p = projects.find((x) => x.id === draft.id);
+                  if (!p || !window.confirm('Remove the demo video from this project?')) return;
+                  try {
+                    await studentsApi.removeDemo(p);
+                    setDraft({ ...draft, demoVideoUrl: '', demoVideoPath: null, demoDuration: null });
+                    await reload();
+                  } catch (e) {
+                    setError(e instanceof Error ? e.message : 'Could not remove the video.');
+                  }
+                }}
+                className="mt-2 text-[12px] font-semibold text-red-300 hover:underline">
+                  Remove current demo video
+                </button>
+              }
+              <p className="mt-1.5 text-silver-dark">Longer videos are rejected. Shown to students with a © watermark and copyright notice.</p>
             </div>
             <div className="text-[12px] text-silver">
               Project package {draft.filePath && !pack && <span className="text-tech">(uploaded)</span>}

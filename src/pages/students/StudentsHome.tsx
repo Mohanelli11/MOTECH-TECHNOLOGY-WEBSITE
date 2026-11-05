@@ -10,6 +10,7 @@ import {
   Loader2Icon,
   SearchIcon,
   ShoppingCartIcon,
+  PlayCircleIcon,
   UserPlusIcon } from
 'lucide-react';
 import { PageShell } from '../../components/store/PageShell';
@@ -17,6 +18,7 @@ import { ProjectCover } from '../../components/students/ProjectCover';
 import { formatKes } from '../../lib/accessControl';
 import { useProjects } from '../../lib/useProjects';
 import { useAuth } from '../../contexts/AuthContext';
+import { COPYRIGHT_NOTICE } from '../../components/students/DemoVideo';
 
 const steps = [
 { icon: UserPlusIcon, title: 'Create your account', body: 'Free student account in under a minute.' },
@@ -161,6 +163,11 @@ export function StudentsHome() {
                 <span className="absolute left-3 top-3 inline-flex items-center gap-1.5 rounded-full border border-electric/30 bg-navy/80 px-2.5 py-1 text-[11px] font-semibold text-electric backdrop-blur">
                   {p.level}
                 </span>
+                {p.demoVideoUrl &&
+            <span className="absolute bottom-3 left-3 inline-flex items-center gap-1.5 rounded-full border border-white/20 bg-navy/80 px-2.5 py-1 text-[11px] font-semibold text-white backdrop-blur">
+                    <PlayCircleIcon size={12} className="text-electric" /> Demo video
+                  </span>
+            }
               </div>
               <div className="flex flex-1 flex-col p-5">
                 <p className="font-mono text-[10px] uppercase tracking-[0.2em] text-silver-dark">{p.category}</p>
@@ -201,6 +208,11 @@ export function StudentsHome() {
         )}
         </ul>
       }
+      <p className="mt-14 border-t border-white/8 pt-6 text-center text-[11.5px] leading-relaxed text-silver-dark">
+        {COPYRIGHT_NOTICE} All projects, demo videos, documentation and source code in this marketplace are the
+        intellectual property of MOTECH and are licensed to the purchaser for personal study only. Copying, resale or
+        redistribution is prohibited.
+      </p>
     </PageShell>);
 
 }

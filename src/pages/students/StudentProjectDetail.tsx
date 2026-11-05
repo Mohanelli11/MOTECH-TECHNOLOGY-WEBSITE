@@ -3,6 +3,7 @@ import { Link, useNavigate, useParams } from 'react-router-dom';
 import { ArrowLeftIcon, BadgeCheckIcon, Loader2Icon, ShoppingCartIcon, TagIcon } from 'lucide-react';
 import { PageShell } from '../../components/store/PageShell';
 import { ProjectCover } from '../../components/students/ProjectCover';
+import { DemoVideo } from '../../components/students/DemoVideo';
 import { formatKes } from '../../lib/accessControl';
 import { studentsApi, studentsAvailable, type Project } from '../../lib/students';
 import { useAuth } from '../../contexts/AuthContext';
@@ -65,11 +66,15 @@ export function StudentProjectDetail() {
       {state === 'ready' && project &&
       <div className="grid gap-8 lg:grid-cols-[1.3fr_1fr] lg:items-start">
           <div className="space-y-6">
+            {project.demoVideoUrl ?
+            <DemoVideo src={project.demoVideoUrl} seconds={project.demoDuration} title={project.title} /> :
+
             <div className="glass overflow-hidden rounded-2xl">
-              <div className="aspect-[16/9] bg-navy-800">
-                <ProjectCover src={project.imageUrl} alt={project.title} />
+                <div className="aspect-[16/9] bg-navy-800">
+                  <ProjectCover src={project.imageUrl} alt={project.title} />
+                </div>
               </div>
-            </div>
+            }
             <section className="glass rounded-2xl p-6">
               <h2 className="font-display text-[15px] font-semibold text-white">About this project</h2>
               <p className="mt-3 whitespace-pre-line text-[14px] leading-relaxed text-silver">
