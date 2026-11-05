@@ -53,3 +53,23 @@ create policy project_storage_admin on storage.objects for all to authenticated
 drop policy if exists project_images_public_read on storage.objects;
 create policy project_images_public_read on storage.objects for select
   using (bucket_id = 'project-images');
+
+-- ---------------------------------------------------------------------------------------------
+-- Demo videos (max 3 minutes, enforced in the admin form; max 50 MB / mp4 or webm enforced here).
+-- ---------------------------------------------------------------------------------------------
+alter table public.student_projects add column if not exists demo_video_url  text not null default '';
+alter table public.student_projects add column if not exists demo_video_path text;
+alter table public.student_projects add column if not exists demo_duration   integer;
+
+insert into storage.buckets (id, name, public, file_size_limit, allowed_mime_types)
+  values ('project-demos', 'project-demos', true, 52428800, array['video/mp4', 'video/webm'])
+  on conflict (id) do update set file_size_limit = 52428800, allowed_mime_types = array['video/mp4', 'video/webm'];
+
+-- Only the admin can add, replace or delete demo videos; anyone can watch them.
+drop policy if exists project_demos_admin on storage.objects;
+create policy project_demos_admin on storage.objects for all to authenticated
+  using (bucket_id = 'project-demos' and public.is_admin())
+  with check (bucket_id = 'project-demos' and public.is_admin());
+drop policy if exists project_demos_public_read on storage.objects;
+create policy project_demos_public_read on storage.objects for select
+  using (bucket_id = 'project-demos');

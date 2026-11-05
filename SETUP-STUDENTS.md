@@ -22,3 +22,9 @@ Supabase → Authentication → Users → the user → Send password recovery, o
 ## 4. Add projects
 Sign in as admin → **Admin → Student Projects → Add project**. Fill the details, upload a cover image and the
 project package (.zip), set the status to **Published**. Students see only published projects.
+
+## Demo videos
+Run the updated **supabase/students.sql** again (it adds the demo-video columns and a `project-demos` bucket limited to
+50 MB, MP4/WebM). In Admin → Student Projects → edit a project → **Demo video**. Videos longer than 3:00 are rejected.
+Students watch it on the project page (with a © watermark and copyright notice) before buying.
+Tip: export at 720p/H.264; a 3-minute 720p video is usually 20–40 MB. Supabase's free plan caps uploads at 50 MB.
