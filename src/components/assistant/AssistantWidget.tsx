@@ -1,9 +1,8 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { useLocation, useNavigate } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { ArrowRightIcon, BotIcon, Loader2Icon, SendIcon, SparklesIcon, Trash2Icon, XIcon } from 'lucide-react';
 import {
   askAssistant,
-  assistantAvailable,
   isSafeSitePath,
   parseMarkdown,
   type AssistantAction,
@@ -41,6 +40,7 @@ function Inlines({ parts }: {parts: Inline[];}) {
     <>
       {parts.map((p, i) =>
       p.t === 'bold' ? <strong key={i} className="font-semibold text-white">{p.v}</strong> :
+      p.t === 'italic' ? <em key={i} className="italic">{p.v}</em> :
       p.t === 'code' ? <code key={i} className="rounded bg-white/10 px-1 py-0.5 font-mono text-[11.5px] text-electric">{p.v}</code> :
       <React.Fragment key={i}>{p.v}</React.Fragment>
       )}
@@ -73,7 +73,6 @@ function goTo(navigate: ReturnType<typeof useNavigate>, path: string) {
 
 export function AssistantWidget() {
   const { user } = useAuth();
-  const { pathname } = useLocation();
   const navigate = useNavigate();
   const [open, setOpen] = useState(false);
   const [turns, setTurns] = useState<Turn[]>(load);
@@ -95,8 +94,6 @@ export function AssistantWidget() {
     return () => window.removeEventListener('keydown', esc);
   }, [open]);
 
-  if (!assistantAvailable()) return null;
-
   const send = async (text: string) => {
     const q = text.trim();
     if (!q || busy) return;
@@ -107,7 +104,7 @@ export function AssistantWidget() {
     try {
       const { reply, actions } = await askAssistant(
         history.map(({ role, content }) => ({ role, content })),
-        pathname
+        user
       );
       setTurns([...history, { role: 'assistant', content: reply, actions }]);
     } catch (e) {
@@ -132,7 +129,7 @@ export function AssistantWidget() {
         className="fixed bottom-5 right-4 z-[70] inline-flex items-center gap-2 rounded-full bg-electric px-4 py-3.5 text-[13px] font-semibold text-navy shadow-glow transition-colors hover:bg-electric-soft sm:right-6">
         
           <SparklesIcon size={17} />
-          <span className="hidden sm:inline">Ask MOTECH AI</span>
+          <span className="hidden sm:inline">Ask MOTECH</span>
         </button>
       }
 
@@ -147,7 +144,7 @@ export function AssistantWidget() {
               <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-electric/15 text-electric"><BotIcon size={18} /></span>
               <div>
                 <p className="font-display text-[14px] font-semibold text-white">MOTECH Assistant</p>
-                <p className="text-[11px] text-silver-dark">AI · answers about products, store &amp; students</p>
+                <p className="text-[11px] text-silver-dark">Products, store, students &amp; account help</p>
               </div>
             </div>
             <div className="flex items-center gap-1">
@@ -199,20 +196,28 @@ export function AssistantWidget() {
                   {t.role === 'user' ? <p className="whitespace-pre-wrap">{t.content}</p> : <Markdown text={t.content} />}
                   {t.actions && t.actions.length > 0 &&
               <div className="mt-3 flex flex-wrap gap-2">
-                      {t.actions.map((a) =>
-                <button
-                  key={a.path}
-                  type="button"
-                  onClick={() => {
-                    goTo(navigate, a.path);
-                    setOpen(false);
-                  }}
-                  className="inline-flex items-center gap-1.5 rounded-full border border-electric/40 bg-electric/10 px-3.5 py-2 text-[12px] font-semibold text-electric transition-colors hover:bg-electric/20">
-                  
-                          {a.label}
-                          <ArrowRightIcon size={13} />
-                        </button>
-                )}
+                      {t.actions.map((a) => {
+                  const cls = 'inline-flex items-center gap-1.5 rounded-full border border-electric/40 bg-electric/10 px-3.5 py-2 text-[12px] font-semibold text-electric transition-colors hover:bg-electric/20';
+                  return a.type === 'link' ?
+                  <a key={a.href} href={a.href} target="_blank" rel="noopener noreferrer" className={cls}>
+                            {a.label}
+                            <ArrowRightIcon size={13} />
+                          </a> :
+
+                  <button
+                    key={a.path}
+                    type="button"
+                    onClick={() => {
+                      goTo(navigate, a.path);
+                      setOpen(false);
+                    }}
+                    className={cls}>
+                    
+                            {a.label}
+                            <ArrowRightIcon size={13} />
+                          </button>;
+
+                })}
                     </div>
               }
                 </div>
@@ -262,7 +267,7 @@ export function AssistantWidget() {
               </button>
             </div>
             <p className="mt-2 text-center text-[10.5px] text-silver-dark">
-              AI can make mistakes. For quotes, refunds and critical specs, confirm with MOTECH.
+              Automated assistant. For quotes, refunds and critical specs, confirm with MOTECH.
             </p>
           </form>
         </div>

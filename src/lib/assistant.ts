@@ -1,51 +1,138 @@
+import { api } from './accessControl';
 import { getSupabase } from './remote';
+import { studentsApi } from './students';
+import { answer, type AdminSummary, type AssistantAction, type ChatMessage, type Live } from './assistantEngine';
+import { site } from '../data/site';
+import type { User } from '../types/store';
 
-export type ChatMessage = { role: 'user' | 'assistant'; content: string };
-export type AssistantAction = { type: 'navigate'; path: string; label: string };
+export type { AssistantAction, ChatMessage };
 
-export const assistantAvailable = (): boolean => getSupabase() !== null;
+/** The built-in assistant needs no server, so it is always available. */
+export const assistantAvailable = (): boolean => true;
 
-/** Asks the server-side assistant. Throws an Error with a user-friendly message. */
+/* ---- live data, read through the signed-in user's own session (so what it sees is what they could see) ---- */
+
+let priceCache: { at: number; rows: Array<{ id: string; price: number | string; status: 'available' | 'preorder' | 'disabled' }> } | null = null;
+
+async function refreshPrices(): Promise<void> {
+  if (priceCache && Date.now() - priceCache.at < 60_000) return;
+  const sb = getSupabase();
+  if (!sb) return;
+  const { data } = await sb.from('product_prices').select('id,price,status');
+  if (data) priceCache = { at: Date.now(), rows: data as never };
+}
+
+export function buildLive(user: User | null): Live {
+  const isAdmin = user?.role === 'admin';
+  return {
+    user: user ? { name: user.name, email: user.email, role: user.role } : null,
+    prime: refreshPrices,
+    catalog: () =>
+    api.listProducts(true).map((p) => {
+      const r = priceCache?.rows.find((x) => x.id === p.id);
+      return r ? { ...p, price: Number(r.price), status: r.status } : p;
+    }),
+    projects: () => studentsApi.list(),
+    myOrders: async () => {
+      await api.syncCommerce().catch(() => undefined);
+      return api.myOrders();
+    },
+    myLicenses: async () => api.myLicenses(),
+    adminSummary: async (): Promise<AdminSummary | null> => {
+      if (!isAdmin) return null; // second lock; the engine also checks the role
+      try {
+        await api.syncCommerce();
+        const orders = api.adminOrders();
+        const stats = api.adminStats();
+        const paid = orders.filter((o) => o.status === 'verified');
+        const by = new Map<string, { name: string; orders: number; revenue: number }>();
+        for (const o of paid) {
+          const e = by.get(o.productId) ?? { name: o.productName, orders: 0, revenue: 0 };
+          e.orders++;
+          e.revenue += o.amount;
+          by.set(o.productId, e);
+        }
+        let projects: AdminSummary['projects'] = null;
+        try {
+          const list = await studentsApi.list();
+          projects = { published: list.filter((p) => p.status === 'available').length, draft: list.filter((p) => p.status === 'draft').length };
+        } catch {/* marketplace not set up */}
+        return {
+          customers: await api.adminCustomerCount().catch(() => stats.customers),
+          orders: {
+            total: orders.length,
+            paid: paid.length,
+            awaiting: orders.filter((o) => o.status === 'awaiting_payment').length,
+            revoked: orders.filter((o) => o.status === 'rejected').length
+          },
+          revenue: paid.reduce((s, o) => s + o.amount, 0),
+          activeLicenses: stats.activeLicenses,
+          topProducts: [...by.values()].sort((a, b) => b.revenue - a.revenue),
+          recent: orders.slice(0, 8).map((o) => ({
+            id: o.id, product: o.productName, amount: o.amount, status: o.status, customer: o.customer?.email ?? 'unknown', date: o.createdAt
+          })),
+          projects
+        };
+      } catch {
+        return null;
+      }
+    }
+  };
+}
+
+/** Answers a question. Never throws; every result is made of validated, in-site actions. */
 export async function askAssistant(
 messages: ChatMessage[],
-path: string)
+user: User | null)
 : Promise<{reply: string;actions: AssistantAction[];}> {
-  const sb = getSupabase();
-  if (!sb) throw new Error('The assistant is not available right now.');
-  const { data, error } = await sb.functions.invoke('site-assistant', { body: { messages, path } });
-  if (error) {
-    let detail = '';
-    try {
-      const ctx = (error as {context?: Response;}).context;
-      if (ctx && typeof ctx.json === 'function') detail = (await ctx.json())?.error ?? '';
-    } catch {/* ignore */}
-    throw new Error(detail || 'I could not reach the assistant. Please try again.');
-  }
-  if (!data || typeof data.reply !== 'string') throw new Error(data?.error ?? 'The assistant did not answer. Please try again.');
-  const actions: AssistantAction[] = Array.isArray(data.actions) ?
-  data.actions.filter((a: AssistantAction) => a && a.type === 'navigate' && isSafeSitePath(a.path)) :
-  [];
-  return { reply: data.reply, actions };
+  const last = messages[messages.length - 1];
+  const res = await answer(last?.content ?? '', messages, buildLive(user));
+  return { reply: res.reply, actions: res.actions.filter(isSafeAction) };
 }
 
-/** Defence in depth: the server already validates paths, the browser re-checks before navigating. */
-export function isSafeSitePath(p: unknown): p is string {
-  return typeof p === 'string' && p.startsWith('/') && !p.startsWith('//') && !/[\\\s:?@]/.test(p) && p.length <= 120;
+/* ---- action safety: the browser only ever follows known in-site paths or the official dashboard ---- */
+
+const ROUTES = new Set([
+'/', '/store', '/students', '/students/my-projects', '/login', '/register', '/reset-password',
+'/portal', '/portal/library', '/portal/orders', '/portal/licenses', '/portal/profile',
+'/admin', '/admin/orders', '/admin/products', '/admin/documentation', '/admin/customers', '/admin/students']);
+
+const SLUG = '[a-z0-9][a-z0-9-]{0,80}';
+const DYNAMIC = [`^/store/${SLUG}$`, `^/students/${SLUG}$`, `^/students/checkout/${SLUG}$`, `^/checkout/${SLUG}$`].map((r) => new RegExp(r));
+const HOME_SECTIONS = new Set(['home', 'about', 'products', 'solutions', 'energy-dashboard', 'contact']);
+
+/** Returns the path when it is a real page of this site, otherwise null. */
+export function safePath(input: unknown): string | null {
+  if (typeof input !== 'string') return null;
+  const p = input.trim();
+  if (!p || p.length > 120 || !p.startsWith('/') || p.startsWith('//') || /[\\\s:?@]/.test(p)) return null;
+  const [path, hash, ...rest] = p.split('#');
+  if (rest.length) return null;
+  if (hash !== undefined && !(path === '/' && HOME_SECTIONS.has(hash))) return null;
+  return ROUTES.has(path) || DYNAMIC.some((r) => r.test(path)) ? p : null;
 }
 
-/* ---- tiny, safe markdown: **bold**, `code`, "- " lists, paragraphs. Produces data, never HTML strings. ---- */
-export type Inline = {t: 'text' | 'bold' | 'code';v: string;};
+export const isSafeSitePath = (p: unknown): p is string => safePath(p) !== null;
+
+export function isSafeAction(a: AssistantAction): boolean {
+  if (a.type === 'navigate') return isSafeSitePath(a.path);
+  if (a.type === 'link') return a.href === site.dashboardUrl; // the only external destination allowed
+  return false;
+}
+
+/* ---- tiny, safe markdown: **bold**, *italic*, `code`, "- " lists, paragraphs. Produces data, never HTML. ---- */
+export type Inline = {t: 'text' | 'bold' | 'code' | 'italic';v: string;};
 export type Block = {type: 'p';parts: Inline[];} | {type: 'ul';items: Inline[][];};
 
 export function parseInline(s: string): Inline[] {
   const out: Inline[] = [];
-  const re = /(\*\*[^*]+\*\*|`[^`]+`)/g;
+  const re = /(\*\*[^*]+\*\*|`[^`]+`|\*[^*\s][^*]*\*)/g;
   let last = 0;
   for (const m of s.matchAll(re)) {
     const i = m.index ?? 0;
     if (i > last) out.push({ t: 'text', v: s.slice(last, i) });
     const tok = m[0];
-    out.push(tok.startsWith('**') ? { t: 'bold', v: tok.slice(2, -2) } : { t: 'code', v: tok.slice(1, -1) });
+    out.push(tok.startsWith('**') ? { t: 'bold', v: tok.slice(2, -2) } : tok.startsWith('`') ? { t: 'code', v: tok.slice(1, -1) } : { t: 'italic', v: tok.slice(1, -1) });
     last = i + tok.length;
   }
   if (last < s.length) out.push({ t: 'text', v: s.slice(last) });
@@ -57,7 +144,7 @@ export function parseMarkdown(src: string): Block[] {
   let list: Inline[][] | null = null;
   for (const raw of src.replace(/\r/g, '').split('\n')) {
     const line = raw.trim();
-    const bullet = /^[-*•]\s+(.*)$/.exec(line) ?? /^\d+[.)]\s+(.*)$/.exec(line);
+    const bullet = /^[-•]\s+(.*)$/.exec(line) ?? /^\d+[.)]\s+(.*)$/.exec(line);
     if (bullet) {
       if (!list) {
         list = [];
@@ -66,7 +153,7 @@ export function parseMarkdown(src: string): Block[] {
       list.push(parseInline(bullet[1]));
     } else {
       list = null;
-      if (line) blocks.push({ type: 'p', parts: parseInline(line.replace(/^#{1,6}\s+/, '')) });
+      if (line) blocks.push({ type: 'p', parts: parseInline(line) });
     }
   }
   return blocks;
