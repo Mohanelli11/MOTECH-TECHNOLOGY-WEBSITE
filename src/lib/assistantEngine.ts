@@ -66,11 +66,13 @@ type Entity = {
 
 const HOME_TO_STORE: Record<number, string> = { 0: 'prd-sem-100', 1: 'prd-brz-200', 2: 'prd-pql-300', 3: 'prd-rmf-400' };
 
-function buildEntities(): Entity[] {
+/** Builds the products the assistant can talk about: the built-in ones plus anything the admin has added. */
+function buildEntities(products: StoreProduct[]): Entity[] {
   const list: Entity[] = [];
   const used = new Set<string>();
+  const current = (id: string) => products.find((p) => p.id === id) ?? catalog.find((c) => c.id === id);
   homeProducts.forEach((h, i) => {
-    const st = catalog.find((c) => c.id === HOME_TO_STORE[i]);
+    const st = current(HOME_TO_STORE[i]);
     if (st) used.add(st.id);
     list.push({
       key: st?.id ?? h.id,
@@ -80,8 +82,10 @@ function buildEntities(): Entity[] {
       tokens: new Set([...tokens(h.name), ...(st ? tokens(st.name + ' ' + st.slug.replace(/-/g, ' ')) : [])])
     });
   });
-  for (const c of catalog)
-  if (!used.has(c.id))
+  // every other store product, built-in or admin-added (new products appear here automatically)
+  const all = [...catalog.map((c) => current(c.id)!), ...products.filter((p) => !catalog.some((c) => c.id === p.id))];
+  for (const c of all)
+  if (c && !used.has(c.id) && c.status !== 'disabled')
   list.push({ key: c.id, name: c.name, store: c, tokens: new Set(tokens(c.name + ' ' + c.slug.replace(/-/g, ' '))) });
   // aliases that people actually type
   const alias: Record<string, string[]> = {
@@ -95,11 +99,10 @@ function buildEntities(): Entity[] {
   for (const e of list) for (const a of alias[e.key] ?? []) tokens(a).forEach((t) => e.tokens.add(t));
   return list;
 }
-const ENTITIES = buildEntities();
 
 const GENERIC = new Set(['smart', 'energy', 'system', 'data', 'power', 'quality', 'secure', 'node', 'engineering', 'package', 'phase', '1', '3', '1-phase', '3-phase']);
 
-function findEntities(text: string): Entity[] {
+function findEntities(text: string, ENTITIES: Entity[]): Entity[] {
   const t = new Set(tokens(text));
   const compact = norm(text).replace(/[\s-]/g, '');
   const scored: Array<[Entity, number]> = [];
@@ -232,9 +235,9 @@ function howToBuy(extra: AssistantAction[] = []): Answer {
   ...extra, nav('/store', 'Open the store'), nav('/portal/orders', 'My orders'));
 }
 
-function lastEntity(history: ChatMessage[]): Entity | undefined {
+function lastEntity(history: ChatMessage[], entities: Entity[]): Entity | undefined {
   for (let i = history.length - 1; i >= 0; i--) {
-    const m = findEntities(history[i].content)[0];
+    const m = findEntities(history[i].content, entities)[0];
     if (m) return m;
   }
   return undefined;
@@ -309,7 +312,8 @@ export async function answer(question: string, history: ChatMessage[], live: Liv
   }
 
   /* 5. specific products */
-  const ents = findEntities(question);
+  const entities = buildEntities(live.catalog());
+  const ents = findEntities(question, entities);
   const wantsPrice = has(q, 'price', 'cost', 'how much', 'kes', 'ksh', 'pricing', 'afford', 'expensive', 'cheap', 'quote');
   const wantsSpecs = has(q, 'spec', 'technical', 'rated', 'voltage', 'current', 'accuracy', 'enclosure', 'ip5', 'sampling', 'datasheet', 'dimension', 'power supply');
   const wantsFeatures = has(q, 'feature', 'capabilit', 'functions?', 'what can (it|the)', 'benefit');
@@ -330,7 +334,7 @@ export async function answer(question: string, history: ChatMessage[], live: Liv
     return howToBuy(e?.store ? [nav(`/checkout/${e.store.slug}`, `Buy ${e.name}`)] : []);
   }
 
-  const ent = ents[0] ?? (attr ? lastEntity(prior) : undefined);
+  const ent = ents[0] ?? (attr ? lastEntity(prior, entities) : undefined);
   if (ent) {
     const s = ent.store;
     const h = ent.homeIdx !== undefined ? homeProducts[ent.homeIdx] : undefined;
@@ -407,7 +411,7 @@ export async function answer(question: string, history: ChatMessage[], live: Liv
   /* 13. fallback: best-effort search over all product text */
   const qt = new Set(tokens(question));
   let best: { e: Entity; score: number } | null = null;
-  for (const e of ENTITIES) {
+  for (const e of entities) {
     const text = e.store ? [e.store.description, e.store.summary, ...e.store.features, ...e.store.applications].join(' ') : homeProducts[e.homeIdx ?? 0]?.description ?? '';
     const hits = tokens(text).filter((t) => qt.has(t) && t.length > 3);
     const score = new Set(hits).size;

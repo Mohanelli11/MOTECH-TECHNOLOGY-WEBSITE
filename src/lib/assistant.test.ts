@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { answer, type AdminSummary, type ChatMessage, type Live } from './assistantEngine';
-import { isSafeAction, parseMarkdown, safePath } from './assistant';
+import { isSafeAction, mergeCatalog, parseMarkdown, safePath } from './assistant';
 import { catalog } from '../data/catalog';
 import { site } from '../data/site';
 
@@ -156,5 +156,31 @@ describe('markdown renderer', () => {
     const b = parseMarkdown('A **bold** and *italic* and `code`\n- one\n- two\n\n<script>alert(1)</script>');
     expect(b[1]).toMatchObject({ type: 'ul' });
     expect(JSON.stringify(b[2])).toContain('<script>');
+  });
+});
+
+describe('products added by the admin', () => {
+  const rows = [
+    { id: 'prd-sem-100', price: 21000, status: 'available' as const },
+    { id: 'prd-new-x1', name: 'Solar Inverter X1', price: 45000, status: 'available' as const,
+      details: { slug: 'solar-inverter-x1', category: 'Solar', summary: 'Hybrid 5kW inverter.', description: 'A hybrid inverter.', features: ['MPPT tracking'], specs: [{ label: 'Rated power', value: '5 kW' }] } }
+  ];
+  const withNew = () => live(null, { catalog: () => mergeCatalog(catalog, rows) });
+  const askNew = (q: string) => answer(q, [{ role: 'user', content: q }], withNew());
+
+  it('mergeCatalog overlays live prices and adds remote-only products', () => {
+    const m = mergeCatalog(catalog, rows);
+    expect(m.find((p) => p.id === 'prd-sem-100')?.price).toBe(21000);
+    const n = m.find((p) => p.id === 'prd-new-x1')!;
+    expect(n.name).toBe('Solar Inverter X1');
+    expect(n.specs[0].value).toBe('5 kW');
+    expect(m.length).toBe(catalog.length + 1);
+  });
+  it('knows a newly added product by name, with price and specs', async () => {
+    expect((await askNew('how much is the Solar Inverter X1?')).reply).toContain('KES 45,000');
+    expect((await askNew('Solar Inverter X1 specifications')).reply).toMatch(/Rated power/);
+  });
+  it('lists the new product in the catalogue', async () => {
+    expect((await askNew('what products do you sell?')).reply).toMatch(/Solar Inverter X1/);
   });
 });

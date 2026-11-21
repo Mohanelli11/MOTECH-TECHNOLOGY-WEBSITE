@@ -44,7 +44,7 @@ export type RemoteLicense = {
   issued_at: string;
   status: 'active' | 'deactivated';
 };
-export type RemotePrice = { id: string; name: string; price: number | string; status: 'available' | 'preorder' | 'disabled' };
+export type RemotePrice = { id: string; name: string; price: number | string; status: 'available' | 'preorder' | 'disabled'; details?: Record<string, unknown> | null };
 
 /** Orders, licences and payments (Paystack runs server-side in Supabase Edge Functions). */
 export interface RemoteCommerce {
@@ -52,7 +52,7 @@ export interface RemoteCommerce {
   fetchAll(): Promise<{ orders: RemoteOrder[]; licenses: RemoteLicense[]; prices: RemotePrice[] }>;
   startPayment(productId: string): Promise<{ authorizationUrl: string; order: RemoteOrder }>;
   verifyPayment(reference: string): Promise<{ status: string; paystackStatus: string; reason: string | null }>;
-  savePrice(p: { id: string; name: string; price: number; status: string }): Promise<void>;
+  savePrice(p: { id: string; name: string; price: number; status: string; details?: Record<string, unknown> }): Promise<void>;
   deletePrice(id: string): Promise<void>;
   revokeOrder(orderId: string, note: string): Promise<void>;
   setLicenseStatus(licenseId: string, status: 'active' | 'deactivated'): Promise<void>;
@@ -188,7 +188,12 @@ function createSupabaseRemote(sb: SupabaseClient): RemoteAuth {
     callFn('paystack-init', { productId, origin: window.location.origin }),
     verifyPayment: (reference) => callFn('paystack-verify', { reference }),
     async savePrice(p) {
-      const { error } = await sb.from('product_prices').upsert({ ...p, updated_at: new Date().toISOString() });
+      let { error } = await sb.from('product_prices').upsert({ ...p, updated_at: new Date().toISOString() });
+      // Until payments.sql has been re-run the `details` column does not exist: save without it rather than fail.
+      if (error && /details/i.test(error.message)) {
+        const { details: _omit, ...plain } = p;
+        ({ error } = await sb.from('product_prices').upsert({ ...plain, updated_at: new Date().toISOString() }));
+      }
       if (error) throw friendlyAuthError(error);
     },
     async deletePrice(id) {

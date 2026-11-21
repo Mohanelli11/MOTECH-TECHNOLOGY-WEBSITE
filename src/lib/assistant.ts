@@ -3,7 +3,7 @@ import { getSupabase } from './remote';
 import { studentsApi } from './students';
 import { answer, type AdminSummary, type AssistantAction, type ChatMessage, type Live } from './assistantEngine';
 import { site } from '../data/site';
-import type { User } from '../types/store';
+import type { StoreProduct, User } from '../types/store';
 
 export type { AssistantAction, ChatMessage };
 
@@ -12,14 +12,55 @@ export const assistantAvailable = (): boolean => true;
 
 /* ---- live data, read through the signed-in user's own session (so what it sees is what they could see) ---- */
 
-let priceCache: { at: number; rows: Array<{ id: string; price: number | string; status: 'available' | 'preorder' | 'disabled' }> } | null = null;
+type PriceRow = { id: string; name?: string; price: number | string; status: 'available' | 'preorder' | 'disabled'; details?: Record<string, unknown> | null };
+let priceCache: { at: number; rows: PriceRow[] } | null = null;
+
+const strs = (v: unknown): string[] => Array.isArray(v) ? v.filter((x): x is string => typeof x === 'string') : [];
+const rowsOf = (v: unknown): Array<{ label: string; value: string }> =>
+Array.isArray(v) ? v.filter((x) => x && typeof x.label === 'string' && typeof x.value === 'string') : [];
+const str = (v: unknown, d = ''): string => typeof v === 'string' ? v : d;
+
+/**
+ * The store catalogue the assistant reasons over: this device's products, with live price/status applied,
+ * PLUS any product the admin saved on another device (known from the shared price list and its details).
+ */
+export function mergeCatalog(local: StoreProduct[], rows: PriceRow[]): StoreProduct[] {
+  const out = local.map((p) => {
+    const r = rows.find((x) => x.id === p.id);
+    return r ? { ...p, price: Number(r.price), status: r.status } : p;
+  });
+  for (const r of rows) {
+    if (out.some((p) => p.id === r.id)) continue;
+    const d = (r.details ?? {}) as Record<string, unknown>;
+    out.push({
+      id: r.id,
+      slug: str(d.slug, r.id),
+      name: str(r.name, r.id),
+      category: str(d.category, 'Product'),
+      summary: str(d.summary),
+      description: str(d.description, str(d.summary)),
+      image: '',
+      price: Number(r.price),
+      currency: 'KES',
+      status: r.status,
+      features: strs(d.features),
+      applications: strs(d.applications),
+      specs: rowsOf(d.specs),
+      hardware: rowsOf(d.hardware),
+      software: rowsOf(d.software),
+      architecture: strs(d.architecture)
+    });
+  }
+  return out;
+}
 
 async function refreshPrices(): Promise<void> {
   if (priceCache && Date.now() - priceCache.at < 60_000) return;
   const sb = getSupabase();
   if (!sb) return;
-  const { data } = await sb.from('product_prices').select('id,price,status');
-  if (data) priceCache = { at: Date.now(), rows: data as never };
+  let res = await sb.from('product_prices').select('id,name,price,status,details');
+  if (res.error) res = await sb.from('product_prices').select('id,name,price,status'); // details column not added yet
+  if (res.data) priceCache = { at: Date.now(), rows: res.data as unknown as PriceRow[] };
 }
 
 export function buildLive(user: User | null): Live {
@@ -27,11 +68,7 @@ export function buildLive(user: User | null): Live {
   return {
     user: user ? { name: user.name, email: user.email, role: user.role } : null,
     prime: refreshPrices,
-    catalog: () =>
-    api.listProducts(true).map((p) => {
-      const r = priceCache?.rows.find((x) => x.id === p.id);
-      return r ? { ...p, price: Number(r.price), status: r.status } : p;
-    }),
+    catalog: () => mergeCatalog(api.listProducts(true), priceCache?.rows ?? []),
     projects: () => studentsApi.list(),
     myOrders: async () => {
       await api.syncCommerce().catch(() => undefined);
