@@ -11,6 +11,10 @@ create table if not exists public.product_prices (
   updated_at timestamptz not null default now()
 );
 
+-- Public details of admin-added products (description, features, specs...) so the website assistant can
+-- describe a product the moment the admin saves it, on every device.
+alter table public.product_prices add column if not exists details jsonb not null default '{}'::jsonb;
+
 insert into public.product_prices (id, name, price, status) values
   ('prd-sem-100', 'Smart Energy Meter SEM-100', 18500, 'available'),
   ('prd-brz-200', 'Smart Breathalyzer BRZ-200', 96000, 'available'),

@@ -9,6 +9,7 @@ import { Home } from './pages/Home';
 import { Store } from './pages/Store';
 import { ProductDetail } from './pages/ProductDetail';
 import { Checkout } from './pages/Checkout';
+import { AssistantWidget } from './components/assistant/AssistantWidget';
 import { StudentsHome } from './pages/students/StudentsHome';
 import { StudentProjectDetail } from './pages/students/StudentProjectDetail';
 import { StudentCheckout } from './pages/students/StudentCheckout';
@@ -140,6 +141,7 @@ export function App() {
             </Route>
             <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>
+          <AssistantWidget />
 
           <Footer />
         </div>

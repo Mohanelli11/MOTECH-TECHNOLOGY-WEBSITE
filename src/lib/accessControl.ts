@@ -782,7 +782,19 @@ export const api = {
       id: product.id,
       name: product.name,
       price: product.price,
-      status: product.status
+      status: product.status,
+      details: {
+        slug: product.slug,
+        category: product.category,
+        summary: product.summary,
+        description: product.description,
+        features: product.features,
+        applications: product.applications,
+        specs: product.specs,
+        hardware: product.hardware,
+        software: product.software,
+        architecture: product.architecture
+      }
     });
     const idx = db.products.findIndex((p) => p.id === product.id);
     if (idx >= 0) db.products[idx] = product;else
